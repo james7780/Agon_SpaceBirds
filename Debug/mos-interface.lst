@@ -1,4 +1,4 @@
-Zilog eZ80 Macro Assembler Version 4.3 (19073001) RELISTED06-Mar-23     18:50:41     page:   1
+Zilog eZ80 Macro Assembler Version 4.3 (19073001) RELISTED07-Mar-23     13:11:40     page:   1
 
 
 PC     Object              I  Line    Source 
@@ -158,37 +158,37 @@ PC     Object              I  Line    Source
                            A    29    	segment CODE
                            A    30    	.assume ADL=1
                            A    31    	
-040EC5                     A    32    _putch:
-040EC5                     A    33    __putch:
-040EC5 FDE5                A    34    	push 	iy
-040EC7 FD210000 00         A    35    	ld 		iy,0
-040ECC FD39                A    36    	add 	iy, sp
-040ECE FD7E06              A    37    	ld 		a, (iy+6)
-040ED1 5BD7                A    38    	rst.lil	10h
-040ED3 21000000            A    39    	ld		hl,0
-040ED7 6F                  A    40    	ld		l,a
-040ED8 FDF9                A    41    	ld		sp,iy
-040EDA FDE1                A    42    	pop		iy
-040EDC C9                  A    43    	ret
+0411A9                     A    32    _putch:
+0411A9                     A    33    __putch:
+0411A9 FDE5                A    34    	push 	iy
+0411AB FD210000 00         A    35    	ld 		iy,0
+0411B0 FD39                A    36    	add 	iy, sp
+0411B2 FD7E06              A    37    	ld 		a, (iy+6)
+0411B5 5BD7                A    38    	rst.lil	10h
+0411B7 21000000            A    39    	ld		hl,0
+0411BB 6F                  A    40    	ld		l,a
+0411BC FDF9                A    41    	ld		sp,iy
+0411BE FDE1                A    42    	pop		iy
+0411C0 C9                  A    43    	ret
                            A    44    
-040EDD                     A    45    _getch:
-040EDD                     A    46    __getch:
-040EDD FDE5                A    47    	push iy
-040EDF DDE5                A    48    	push ix
-040EE1 3E08                A    49    	ld a, mos_sysvars			; MOS Call for 
-040EE3 5BCF                A    50    	rst.lil 08h					; returns point
-040EE5                     A    51    _getch0:
-040EE5 DD7E05              A    52    	ld a, (ix+sysvar_keycode)	; get current k
-040EE8 B7                  A    53    	or a,a
-040EE9 28 FA               A    54    	jr z, _getch0				; wait for keyp
+0411C1                     A    45    _getch:
+0411C1                     A    46    __getch:
+0411C1 FDE5                A    47    	push iy
+0411C3 DDE5                A    48    	push ix
+0411C5 3E08                A    49    	ld a, mos_sysvars			; MOS Call for 
+0411C7 5BCF                A    50    	rst.lil 08h					; returns point
+0411C9                     A    51    _getch0:
+0411C9 DD7E05              A    52    	ld a, (ix+sysvar_keycode)	; get current k
+0411CC B7                  A    53    	or a,a
+0411CD 28 FA               A    54    	jr z, _getch0				; wait for keyp
                            A    55    	
-040EEB F5                  A    56    	push af						; debounce key,
-040EEC AF                  A    57    	xor a
-040EED DD7705              A    58    	ld (ix+sysvar_keycode),a
-040EF0 F1                  A    59    	pop af
-040EF1 DDE1                A    60    	pop ix
-040EF3 FDE1                A    61    	pop iy
-040EF5 C9                  A    62    	ret
+0411CF F5                  A    56    	push af						; debounce key,
+0411D0 AF                  A    57    	xor a
+0411D1 DD7705              A    58    	ld (ix+sysvar_keycode),a
+0411D4 F1                  A    59    	pop af
+0411D5 DDE1                A    60    	pop ix
+0411D7 FDE1                A    61    	pop iy
+0411D9 C9                  A    62    	ret
                            A    63    
                            A    64    ; _waitvblank:
                            A    65    	; push iy
@@ -200,15 +200,15 @@ PC     Object              I  Line    Source
                            A    71    	; pop iy
                            A    72    	; ret
                            A    73    	
-040EF6                     A    74    _waitvblank:
-040EF6 DDE5                A    75    	push ix
-040EF8 3E08                A    76    	ld a, mos_sysvars
-040EFA 5BCF                A    77    	rst.lil 08h
-040EFC DD7E00              A    78    	ld a, (ix + sysvar_time + 0)
-040EFF DDBE00              A    79    $$:	cp a, (ix + sysvar_time + 0)
-040F02 28 FB               A    80    	jr z, $B
-040F04 DDE1                A    81    	pop ix
-040F06 C9                  A    82    	ret
+0411DA                     A    74    _waitvblank:
+0411DA DDE5                A    75    	push ix
+0411DC 3E08                A    76    	ld a, mos_sysvars
+0411DE 5BCF                A    77    	rst.lil 08h
+0411E0 DD7E00              A    78    	ld a, (ix + sysvar_time + 0)
+0411E3 DDBE00              A    79    $$:	cp a, (ix + sysvar_time + 0)
+0411E6 28 FB               A    80    	jr z, $B
+0411E8 DDE1                A    81    	pop ix
+0411EA C9                  A    82    	ret
                            A    83    
                            A    84    
                            A    85    ; _getsysvar8bit:
@@ -223,102 +223,102 @@ PC     Object              I  Line    Source
                            A    94    	; pop iy
                            A    95    	; ret
                            A    96    	
-040F07                     A    97    _getsysvar8bit:
-040F07 DDE5                A    98    	push ix
-040F09 C5                  A    99    	push bc
-040F0A 4F                  A   100    	ld c, a    					; get parameter
-040F0B 3E08                A   101    	ld a, mos_sysvars
-040F0D 5BCF                A   102    	rst.lil 08h					; get sysvars p
-040F0F 0600                A   103    	ld b, 0
-040F11 DD09                A   104    	add ix, bc
-040F13 DD7E00              A   105    	ld a, (ix)					; return UINT8 
-040F16 C1                  A   106    	pop bc
-040F17 DDE1                A   107    	pop ix
-040F19 C9                  A   108    	ret
+0411EB                     A    97    _getsysvar8bit:
+0411EB DDE5                A    98    	push ix
+0411ED C5                  A    99    	push bc
+0411EE 4F                  A   100    	ld c, a    					; get parameter
+0411EF 3E08                A   101    	ld a, mos_sysvars
+0411F1 5BCF                A   102    	rst.lil 08h					; get sysvars p
+0411F3 0600                A   103    	ld b, 0
+0411F5 DD09                A   104    	add ix, bc
+0411F7 DD7E00              A   105    	ld a, (ix)					; return UINT8 
+0411FA C1                  A   106    	pop bc
+0411FB DDE1                A   107    	pop ix
+0411FD C9                  A   108    	ret
                            A   109    
                            A   110    ; TODO - 24 bit result!
-040F1A                     A   111     _getsysvar16bit:
-040F1A                     A   112     _getsysvar24bit:
-040F1A DDE5                A   113    	push ix
-040F1C C5                  A   114    	push bc
-040F1D 4F                  A   115    	ld c, a    					; get parameter
-040F1E 3E08                A   116    	ld a, mos_sysvars
-040F20 5BCF                A   117    	rst.lil 08h					; get sysvars p
-040F22 0600                A   118    	ld b, 0
-040F24 DD09                A   119    	add ix, bc
-040F26 DD2700              A   120    	ld hl, (ix)					; return UINT16
+0411FE                     A   111     _getsysvar16bit:
+0411FE                     A   112     _getsysvar24bit:
+0411FE DDE5                A   113    	push ix
+041200 C5                  A   114    	push bc
+041201 4F                  A   115    	ld c, a    					; get parameter
+041202 3E08                A   116    	ld a, mos_sysvars
+041204 5BCF                A   117    	rst.lil 08h					; get sysvars p
+041206 0600                A   118    	ld b, 0
+041208 DD09                A   119    	add ix, bc
+04120A DD2700              A   120    	ld hl, (ix)					; return UINT16
                            A   121    	;ld de, (ix + 2)
-040F29 C1                  A   122    	pop bc
-040F2A FDE1                A   123    	pop iy
-040F2C C9                  A   124    	ret
+04120D C1                  A   122    	pop bc
+04120E FDE1                A   123    	pop iy
+041210 C9                  A   124    	ret
                            A   125    	
                            A   126    
-040F2D                     A   127    _mos_fopen:
-040F2D FDE5                A   128    	push iy
-040F2F FD210000 00         A   129    	ld iy,0
-040F34 FD39                A   130    	add iy, sp
+041211                     A   127    _mos_fopen:
+041211 FDE5                A   128    	push iy
+041213 FD210000 00         A   129    	ld iy,0
+041218 FD39                A   130    	add iy, sp
                            A   131    	
-040F36 FD2706              A   132    	ld hl, (iy+6)	; address to 0-terminated f
-040F39 FD4E09              A   133    	ld c,  (iy+9)	; mode : fa_read / fa_write
-040F3C 3E0A                A   134    	ld a, mos_fopen
-040F3E 5BCF                A   135    	rst.lil 08h		; returns filehandle in A
+04121A FD2706              A   132    	ld hl, (iy+6)	; address to 0-terminated f
+04121D FD4E09              A   133    	ld c,  (iy+9)	; mode : fa_read / fa_write
+041220 3E0A                A   134    	ld a, mos_fopen
+041222 5BCF                A   135    	rst.lil 08h		; returns filehandle in A
                            A   136    	
-040F40 FDF9                A   137    	ld sp,iy
-040F42 FDE1                A   138    	pop iy
-040F44 C9                  A   139    	ret	
+041224 FDF9                A   137    	ld sp,iy
+041226 FDE1                A   138    	pop iy
+041228 C9                  A   139    	ret	
                            A   140    
-040F45                     A   141    _mos_fclose:
-040F45 FDE5                A   142    	push iy
-040F47 FD210000 00         A   143    	ld iy,0
-040F4C FD39                A   144    	add iy, sp
+041229                     A   141    _mos_fclose:
+041229 FDE5                A   142    	push iy
+04122B FD210000 00         A   143    	ld iy,0
+041230 FD39                A   144    	add iy, sp
                            A   145    	
-040F4E FD4E06              A   146    	ld c, (iy+6)	; filehandle, or 0 to close
-040F51 3E0B                A   147    	ld a, mos_fclose
-040F53 5BCF                A   148    	rst.lil 08h		; returns number of files s
+041232 FD4E06              A   146    	ld c, (iy+6)	; filehandle, or 0 to close
+041235 3E0B                A   147    	ld a, mos_fclose
+041237 5BCF                A   148    	rst.lil 08h		; returns number of files s
                            A   149    	
-040F55 FDF9                A   150    	ld sp,iy
-040F57 FDE1                A   151    	pop iy
-040F59 C9                  A   152    	ret	
+041239 FDF9                A   150    	ld sp,iy
+04123B FDE1                A   151    	pop iy
+04123D C9                  A   152    	ret	
                            A   153    
-040F5A                     A   154    _mos_fgetc:
-040F5A FDE5                A   155    	push iy
-040F5C FD210000 00         A   156    	ld iy,0
-040F61 FD39                A   157    	add iy, sp
+04123E                     A   154    _mos_fgetc:
+04123E FDE5                A   155    	push iy
+041240 FD210000 00         A   156    	ld iy,0
+041245 FD39                A   157    	add iy, sp
                            A   158    	
-040F63 FD4E06              A   159    	ld c, (iy+6)	; filehandle
-040F66 3E0C                A   160    	ld a, mos_fgetc
-040F68 5BCF                A   161    	rst.lil 08h		; returns character in A
+041247 FD4E06              A   159    	ld c, (iy+6)	; filehandle
+04124A 3E0C                A   160    	ld a, mos_fgetc
+04124C 5BCF                A   161    	rst.lil 08h		; returns character in A
                            A   162    	
-040F6A FDF9                A   163    	ld sp,iy
-040F6C FDE1                A   164    	pop iy
-040F6E C9                  A   165    	ret	
+04124E FDF9                A   163    	ld sp,iy
+041250 FDE1                A   164    	pop iy
+041252 C9                  A   165    	ret	
                            A   166    
-040F6F                     A   167    _mos_fputc:
-040F6F FDE5                A   168    	push iy
-040F71 FD210000 00         A   169    	ld iy,0
-040F76 FD39                A   170    	add iy, sp
+041253                     A   167    _mos_fputc:
+041253 FDE5                A   168    	push iy
+041255 FD210000 00         A   169    	ld iy,0
+04125A FD39                A   170    	add iy, sp
                            A   171    	
-040F78 FD4E06              A   172    	ld c, (iy+6)	; filehandle
-040F7B FD4609              A   173    	ld b, (iy+9)	; character to write
-040F7E 3E0D                A   174    	ld a, mos_fputc
-040F80 5BCF                A   175    	rst.lil 08h		; returns nothing
+04125C FD4E06              A   172    	ld c, (iy+6)	; filehandle
+04125F FD4609              A   173    	ld b, (iy+9)	; character to write
+041262 3E0D                A   174    	ld a, mos_fputc
+041264 5BCF                A   175    	rst.lil 08h		; returns nothing
                            A   176    	
-040F82 FDF9                A   177    	ld sp,iy
-040F84 FDE1                A   178    	pop iy
-040F86 C9                  A   179    	ret	
+041266 FDF9                A   177    	ld sp,iy
+041268 FDE1                A   178    	pop iy
+04126A C9                  A   179    	ret	
                            A   180    
-040F87                     A   181    _mos_feof:
-040F87 FDE5                A   182    	push iy
-040F89 FD210000 00         A   183    	ld iy,0
-040F8E FD39                A   184    	add iy, sp
+04126B                     A   181    _mos_feof:
+04126B FDE5                A   182    	push iy
+04126D FD210000 00         A   183    	ld iy,0
+041272 FD39                A   184    	add iy, sp
                            A   185    	
-040F90 FD4E06              A   186    	ld c, (iy+6)	; filehandle
-040F93 3E0E                A   187    	ld a, mos_feof
-040F95 5BCF                A   188    	rst.lil 08h		; returns A: 1 at End-of-Fi
+041274 FD4E06              A   186    	ld c, (iy+6)	; filehandle
+041277 3E0E                A   187    	ld a, mos_feof
+041279 5BCF                A   188    	rst.lil 08h		; returns A: 1 at End-of-Fi
                            A   189    	
-040F97 FDF9                A   190    	ld sp,iy
-040F99 FDE1                A   191    	pop iy
-040F9B C9                  A   192    	ret	
+04127B FDF9                A   190    	ld sp,iy
+04127D FDE1                A   191    	pop iy
+04127F C9                  A   192    	ret	
                            A   193    
                            A   194    end
                            A   195    

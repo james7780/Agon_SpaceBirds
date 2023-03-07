@@ -70,20 +70,20 @@ buildall: clean SpaceBirds relist
 relink: deltarget SpaceBirds
 
 deltarget: 
-	@if exist "$(WORKDIR)\Critters.lod"  \
-            $(RM) "$(WORKDIR)\Critters.lod"
-	@if exist "$(WORKDIR)\Critters.hex"  \
-            $(RM) "$(WORKDIR)\Critters.hex"
-	@if exist "$(WORKDIR)\Critters.map"  \
-            $(RM) "$(WORKDIR)\Critters.map"
+	@if exist "$(WORKDIR)\SpaceBirds.lod"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.lod"
+	@if exist "$(WORKDIR)\SpaceBirds.hex"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.hex"
+	@if exist "$(WORKDIR)\SpaceBirds.map"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.map"
 
 clean: 
-	@if exist "$(WORKDIR)\Critters.lod"  \
-            $(RM) "$(WORKDIR)\Critters.lod"
-	@if exist "$(WORKDIR)\Critters.hex"  \
-            $(RM) "$(WORKDIR)\Critters.hex"
-	@if exist "$(WORKDIR)\Critters.map"  \
-            $(RM) "$(WORKDIR)\Critters.map"
+	@if exist "$(WORKDIR)\SpaceBirds.lod"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.lod"
+	@if exist "$(WORKDIR)\SpaceBirds.hex"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.hex"
+	@if exist "$(WORKDIR)\SpaceBirds.map"  \
+            $(RM) "$(WORKDIR)\SpaceBirds.map"
 	@if exist "$(WORKDIR)\init.obj"  \
             $(RM) "$(WORKDIR)\init.obj"
 	@if exist "$(WORKDIR)\init.lis"  \
@@ -114,13 +114,13 @@ clean:
             $(RM) "$(WORKDIR)\vdp.src"
 
 relist: 
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\Critters.map" \
+	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
             C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\init.asm
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\Critters.map" \
+	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
             C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\main.src
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\Critters.map" \
+	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
             C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\mos-interface.asm
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\Critters.map" \
+	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
             C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\vdp.src
 
 # pre-4.11.0 compatibility
@@ -144,6 +144,11 @@ $(WORKDIR_ESCSPACE)\init.obj :  \
 $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\main.c  \
             $(PRJDIR_ESCSPACE)\mos-interface.h  \
+            $(PRJDIR_ESCSPACE)\sprites\bird_16x12.h  \
+            $(PRJDIR_ESCSPACE)\sprites\bird_32x24.h  \
+            $(PRJDIR_ESCSPACE)\sprites\explosions.h  \
+            $(PRJDIR_ESCSPACE)\sprites\playerShip.h  \
+            $(PRJDIR_ESCSPACE)\sprites\ufos.h  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \

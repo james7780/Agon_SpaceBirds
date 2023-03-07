@@ -11509,50 +11509,51 @@ _bbirdData:
 ;   18	#include "sprites/bird_16x12.h"
 ;   19	#include "sprites/bird_32x24.h" 
 ;   20	
-;   21	#define BITMAP_WIDTH		16
-;   22	#define BITMAP_HEIGHT	16	
-;   23	
-;   24	// Bitmaps ids
-;   25	enum {
-;   26		BID_PLAYER0 = 0,			// 0 to 7 - Player and player bullet bitmap id's
-;   27		BID_PLAYER1,
-;   28		BID_PLAYER2,
-;   29		BID_PLAYER3,
-;   30		BID_UNUSED1,
-;   31		BID_UNUSED2,
+;   21	#define MAX_SPRITES		32
+;   22	#define BITMAP_WIDTH		16
+;   23	#define BITMAP_HEIGHT	16	
+;   24	
+;   25	// Bitmaps ids
+;   26	enum {
+;   27		BID_PLAYER0 = 0,			// 0 to 7 - Player and player bullet bitmap id's
+;   28		BID_PLAYER1,
+;   29		BID_PLAYER2,
+;   30		BID_PLAYER3,
+;   31		BID_UNUSED1,
 ;   32		BID_UNUSED2,
-;   33		BID_PLAYERBULLET,
-;   34		
-;   35		BID_EXPLOSION0,			// 8 to 15 - Explosions id's
-;   36		BID_EXPLOSION1,
-;   37		BID_EXPLOSION2,
-;   38		BID_EXPLOSION3,
-;   39		BID_EXPLOSION4,
-;   40		BID_EXPLOSION5,
-;   41		BID_EXPLOSION6,
-;   42		BID_EXPLOSION7,
-;   43		
-;   44		BID_SBIRD0,				// 16 to 23 - Small bird id's			
-;   45		BID_SBIRD1,				
-;   46		BID_SBIRD2,				
-;   47		BID_SBIRD3,				
-;   48		BID_SBIRD4,				
-;   49		BID_SBIRD5,				
-;   50		BID_SBIRD6,				
-;   51		BID_ENEMYBULLET,				
-;   52	
-;   53		BID_BBIRD0,				// 24 to 31 - Big bird id's			
-;   54		BID_BBIRD1,				
-;   55		BID_BBIRD2,				
-;   56		BID_BBIRD3,				
-;   57		BID_BBIRD4,				
-;   58		BID_BBIRD5,				
-;   59		BID_BBIRD6			
-;   60		
-;   61	};
-;   62	
-;   63	UINT8 rand255()
-;   64	{
+;   33		BID_UNUSED2,
+;   34		BID_PLAYERBULLET,
+;   35		
+;   36		BID_EXPLOSION0,			// 8 to 15 - Explosions id's
+;   37		BID_EXPLOSION1,
+;   38		BID_EXPLOSION2,
+;   39		BID_EXPLOSION3,
+;   40		BID_EXPLOSION4,
+;   41		BID_EXPLOSION5,
+;   42		BID_EXPLOSION6,
+;   43		BID_EXPLOSION7,
+;   44		
+;   45		BID_SBIRD0,				// 16 to 23 - Small bird id's			
+;   46		BID_SBIRD1,				
+;   47		BID_SBIRD2,				
+;   48		BID_SBIRD3,				
+;   49		BID_SBIRD4,				
+;   50		BID_SBIRD5,				
+;   51		BID_SBIRD6,				
+;   52		BID_ENEMYBULLET,				
+;   53	
+;   54		BID_BBIRD0,				// 24 to 31 - Big bird id's			
+;   55		BID_BBIRD1,				
+;   56		BID_BBIRD2,				
+;   57		BID_BBIRD3,				
+;   58		BID_BBIRD4,				
+;   59		BID_BBIRD5,				
+;   60		BID_BBIRD6			
+;   61		
+;   62	};
+;   63	
+;   64	UINT8 rand255()
+;   65	{
 _rand255:
 .DEFINE "_rand255"
 
@@ -11564,18 +11565,18 @@ _rand255:
 
 .ENDEF
 
-.BEGFUNC "rand255",64,"_rand255"
+.BEGFUNC "rand255",65,"_rand255"
 
 	PUSH	IX
 	LD	IX,0
 	ADD	IX,SP
-;   65		return (rand() & 0xFF);
-.LINE 65
+;   66		return (rand() & 0xFF);
+.LINE 66
 
 	CALL	_rand
 	LD	A,L
-;   66	}
-.LINE 66
+;   67	}
+.LINE 67
 
 	LD	SP,IX
 	POP	IX
@@ -11591,10 +11592,10 @@ _rand255:
 ;       Spill Code: 0 (instruction)
 
 
-.ENDFUNC "rand255",66,"_rand255"
-;   67	
-;   68	void UploadBitmaps()
-;   69	{
+.ENDFUNC "rand255",67,"_rand255"
+;   68	
+;   69	void UploadBitmaps()
+;   70	{
 _UploadBitmaps:
 .DEFINE "_UploadBitmaps"
 
@@ -11606,14 +11607,14 @@ _UploadBitmaps:
 
 .ENDEF
 
-.BEGFUNC "UploadBitmaps",69,"_UploadBitmaps"
+.BEGFUNC "UploadBitmaps",70,"_UploadBitmaps"
 
 	PUSH	IX
 	LD	IX,0
 	ADD	IX,SP
-;   70		// Player and player bullet uses bitmaps 0 to 7
-;   71		vdp_bitmapSendData(BID_PLAYER0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-.LINE 71
+;   71		// Player and player bullet uses bitmaps 0 to 7
+;   72		vdp_bitmapSendData(BID_PLAYER0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
+.LINE 72
 
 	LD	BC,_playerData
 	PUSH	BC
@@ -11627,8 +11628,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   72		vdp_bitmapSendData(BID_PLAYER1, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[1]);		// player exploding 1
-.LINE 72
+;   73		vdp_bitmapSendData(BID_PLAYER1, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[1]);		// player exploding 1
+.LINE 73
 
 	LD	BC,1024
 	LD	HL,_playerData
@@ -11644,8 +11645,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   73		vdp_bitmapSendData(BID_PLAYER2, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[2]);		// player exploding 2
-.LINE 73
+;   74		vdp_bitmapSendData(BID_PLAYER2, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[2]);		// player exploding 2
+.LINE 74
 
 	LD	BC,2048
 	LD	HL,_playerData
@@ -11661,8 +11662,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   74		vdp_bitmapSendData(BID_PLAYER3, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[3]);		// player exploding 3
-.LINE 74
+;   75		vdp_bitmapSendData(BID_PLAYER3, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[3]);		// player exploding 3
+.LINE 75
 
 	LD	BC,3072
 	LD	HL,_playerData
@@ -11678,8 +11679,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   75		vdp_bitmapSendData(BID_PLAYERBULLET, 16, 16, playerBulletData);	// player bullet
-.LINE 75
+;   76		vdp_bitmapSendData(BID_PLAYERBULLET, 16, 16, playerBulletData);	// player bullet
+.LINE 76
 
 	LD	BC,_playerBulletData
 	PUSH	BC
@@ -11693,10 +11694,10 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   76		
-;   77		// Explosions use bitmaps 8 to 15
-;   78		vdp_bitmapSendData(BID_EXPLOSION0, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[0]);
-.LINE 78
+;   77		
+;   78		// Explosions use bitmaps 8 to 15
+;   79		vdp_bitmapSendData(BID_EXPLOSION0, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[0]);
+.LINE 79
 
 	LD	BC,_explosionData
 	PUSH	BC
@@ -11710,8 +11711,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   79		vdp_bitmapSendData(BID_EXPLOSION1, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[1]);
-.LINE 79
+;   80		vdp_bitmapSendData(BID_EXPLOSION1, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[1]);
+.LINE 80
 
 	LD	BC,1024
 	LD	HL,_explosionData
@@ -11727,8 +11728,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   80		vdp_bitmapSendData(BID_EXPLOSION2, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[2]);
-.LINE 80
+;   81		vdp_bitmapSendData(BID_EXPLOSION2, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[2]);
+.LINE 81
 
 	LD	BC,2048
 	LD	HL,_explosionData
@@ -11744,8 +11745,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   81		vdp_bitmapSendData(BID_EXPLOSION3, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[3]);
-.LINE 81
+;   82		vdp_bitmapSendData(BID_EXPLOSION3, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[3]);
+.LINE 82
 
 	LD	BC,3072
 	LD	HL,_explosionData
@@ -11761,8 +11762,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   82		vdp_bitmapSendData(BID_EXPLOSION4, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[4]);
-.LINE 82
+;   83		vdp_bitmapSendData(BID_EXPLOSION4, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[4]);
+.LINE 83
 
 	LD	BC,4096
 	LD	HL,_explosionData
@@ -11778,8 +11779,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   83		vdp_bitmapSendData(BID_EXPLOSION5, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[5]);
-.LINE 83
+;   84		vdp_bitmapSendData(BID_EXPLOSION5, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[5]);
+.LINE 84
 
 	LD	BC,5120
 	LD	HL,_explosionData
@@ -11795,8 +11796,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   84		vdp_bitmapSendData(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6]);
-.LINE 84
+;   85		vdp_bitmapSendData(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6]);
+.LINE 85
 
 	LD	BC,6144
 	LD	HL,_explosionData
@@ -11812,8 +11813,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   85		vdp_bitmapSendData(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7]);
-.LINE 85
+;   86		vdp_bitmapSendData(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7]);
+.LINE 86
 
 	LD	BC,7168
 	LD	HL,_explosionData
@@ -11829,10 +11830,10 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   86	
-;   87		// Small enemy birds use bitmaps 16 to 23
-;   88		vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
-.LINE 88
+;   87	
+;   88		// Small enemy birds use bitmaps 16 to 23
+;   89		vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
+.LINE 89
 
 	LD	BC,_sbirdData
 	PUSH	BC
@@ -11846,8 +11847,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   89		vdp_bitmapSendData(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1]);
-.LINE 89
+;   90		vdp_bitmapSendData(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1]);
+.LINE 90
 
 	LD	BC,768
 	LD	HL,_sbirdData
@@ -11864,8 +11865,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   90		vdp_bitmapSendData(BID_SBIRD2, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[2]);
-.LINE 90
+;   91		vdp_bitmapSendData(BID_SBIRD2, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[2]);
+.LINE 91
 
 	LD	BC,1536
 	LD	HL,_sbirdData
@@ -11882,8 +11883,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   91		vdp_bitmapSendData(BID_SBIRD3, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[3]);
-.LINE 91
+;   92		vdp_bitmapSendData(BID_SBIRD3, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[3]);
+.LINE 92
 
 	LD	BC,2304
 	LD	HL,_sbirdData
@@ -11900,8 +11901,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   92		vdp_bitmapSendData(BID_SBIRD4, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[4]);
-.LINE 92
+;   93		vdp_bitmapSendData(BID_SBIRD4, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[4]);
+.LINE 93
 
 	LD	BC,3072
 	LD	HL,_sbirdData
@@ -11918,8 +11919,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   93		vdp_bitmapSendData(BID_SBIRD5, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[5]);
-.LINE 93
+;   94		vdp_bitmapSendData(BID_SBIRD5, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[5]);
+.LINE 94
 
 	LD	BC,3840
 	LD	HL,_sbirdData
@@ -11936,8 +11937,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   94		vdp_bitmapSendData(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6]);
-.LINE 94
+;   95		vdp_bitmapSendData(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6]);
+.LINE 95
 
 	LD	BC,4608
 	LD	HL,_sbirdData
@@ -11954,8 +11955,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   95		vdp_bitmapSendData(BID_ENEMYBULLET, 16, 16, enemyBulletData);
-.LINE 95
+;   96		vdp_bitmapSendData(BID_ENEMYBULLET, 16, 16, enemyBulletData);
+.LINE 96
 
 	LD	BC,_enemyBulletData
 	PUSH	BC
@@ -11969,10 +11970,10 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   96		
-;   97		// Big enemy birds use bitmaps 24 to 31
-;   98		vdp_bitmapSendData(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0]);
-.LINE 98
+;   97		
+;   98		// Big enemy birds use bitmaps 24 to 31
+;   99		vdp_bitmapSendData(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0]);
+.LINE 99
 
 	LD	BC,_bbirdData
 	PUSH	BC
@@ -11987,8 +11988,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;   99		vdp_bitmapSendData(BID_BBIRD1, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[1]);
-.LINE 99
+;  100		vdp_bitmapSendData(BID_BBIRD1, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[1]);
+.LINE 100
 
 	LD	BC,3072
 	LD	HL,_bbirdData
@@ -12005,8 +12006,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  100		vdp_bitmapSendData(BID_BBIRD2, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[2]);
-.LINE 100
+;  101		vdp_bitmapSendData(BID_BBIRD2, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[2]);
+.LINE 101
 
 	LD	BC,6144
 	LD	HL,_bbirdData
@@ -12023,8 +12024,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  101		vdp_bitmapSendData(BID_BBIRD3, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[3]);
-.LINE 101
+;  102		vdp_bitmapSendData(BID_BBIRD3, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[3]);
+.LINE 102
 
 	LD	BC,9216
 	LD	HL,_bbirdData
@@ -12041,8 +12042,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  102		vdp_bitmapSendData(BID_BBIRD4, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[4]);
-.LINE 102
+;  103		vdp_bitmapSendData(BID_BBIRD4, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[4]);
+.LINE 103
 
 	LD	BC,12288
 	LD	HL,_bbirdData
@@ -12059,8 +12060,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  103		vdp_bitmapSendData(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5]);
-.LINE 103
+;  104		vdp_bitmapSendData(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5]);
+.LINE 104
 
 	LD	BC,15360
 	LD	HL,_bbirdData
@@ -12077,8 +12078,8 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  104		vdp_bitmapSendData(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6]);
-.LINE 104
+;  105		vdp_bitmapSendData(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6]);
+.LINE 105
 
 	LD	BC,18432
 	LD	HL,_bbirdData
@@ -12095,16 +12096,16 @@ _UploadBitmaps:
 	POP	BC
 	POP	BC
 	POP	BC
-;  105		
-;  106	/* 	vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-;  107		vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-;  108		vdp_bitmapSendData(1, BITMAP_WIDTH, BITMAP_HEIGHT, playerBulletData);
-;  109		vdp_bitmapSendData(2, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[0]);	
-;  110		vdp_bitmapSendData(3, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[1]);
-;  111		vdp_bitmapSendData(4, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[2]);
-;  112		vdp_bitmapSendData(5, BITMAP_WIDTH, BITMAP_HEIGHT, ufoBulletData); */	
-;  113	}
-.LINE 113
+;  106		
+;  107	/* 	vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
+;  108		vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
+;  109		vdp_bitmapSendData(1, BITMAP_WIDTH, BITMAP_HEIGHT, playerBulletData);
+;  110		vdp_bitmapSendData(2, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[0]);	
+;  111		vdp_bitmapSendData(3, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[1]);
+;  112		vdp_bitmapSendData(4, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[2]);
+;  113		vdp_bitmapSendData(5, BITMAP_WIDTH, BITMAP_HEIGHT, ufoBulletData); */	
+;  114	}
+.LINE 114
 
 	LD	SP,IX
 	POP	IX
@@ -12126,11 +12127,100 @@ _UploadBitmaps:
 ;       Spill Code: 0 (instruction)
 
 
-.ENDFUNC "UploadBitmaps",113,"_UploadBitmaps"
-;  114	
-;  115	/// @param[in] argc			Argument count
-;  116	/// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
-;  117	int main(int argc, char * argv[]) {
+.ENDFUNC "UploadBitmaps",114,"_UploadBitmaps"
+;  115	
+;  116	// Setup the sprites according to the level
+;  117	void SetupSprites(UINT8 level)
+;  118	{
+_SetupSprites:
+.DEFINE "_SetupSprites"
+
+.VALUE _SetupSprites
+
+.CLASS 2
+
+.TYPE 65
+
+.ENDEF
+
+.BEGFUNC "SetupSprites",118,"_SetupSprites"
+
+.LINE 118
+
+.DEFINE "level"
+
+.CLASS 65
+
+.VALUE 6
+
+.TYPE 12
+
+.ENDEF
+
+.DEFINE "i"
+
+.CLASS 65
+
+.VALUE -1
+
+.TYPE 12
+
+.ENDEF
+
+	PUSH	IX
+	LD	IX,0
+	ADD	IX,SP
+	DEC	SP
+;  119		UINT8 i;
+;  120		for (i = 0; i < MAX_SPRITES; i++)
+.LINE 120
+
+	LD	(IX+%FFFFFFFF),%0
+	JR	L_5
+L_3:
+;  121			{
+;  122			vdp_spriteHide(i);
+.LINE 122
+
+	LD	C,(IX+%FFFFFFFF)
+	LD	B,%0
+	PUSH	BC
+	CALL	_vdp_spriteHide
+	POP	BC
+	INC	(IX+%FFFFFFFF)
+;  123			}
+L_5:
+.LINE 123
+
+	LD	A,(IX+%FFFFFFFF)
+	CP	A,%20
+	JR	C,L_3
+;  124		
+;  125		
+;  126	}
+.LINE 126
+
+	LD	SP,IX
+	POP	IX
+	RET	
+
+
+;**************************** _SetupSprites ***************************
+;Name                         Addr/Register   Size   Type
+;_vdp_spriteHide                     IMPORT  -----   function
+;i                                     IX-1      1   variable
+;level                                 IX+6      1   parameter
+
+
+; Stack Frame Size: 10 (bytes)
+;       Spill Code: 0 (instruction)
+
+
+.ENDFUNC "SetupSprites",126,"_SetupSprites"
+;  127	
+;  128	/// @param[in] argc			Argument count
+;  129	/// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
+;  130	int main(int argc, char * argv[]) {
 _main:
 .DEFINE "_main"
 
@@ -12142,9 +12232,9 @@ _main:
 
 .ENDEF
 
-.BEGFUNC "main",117,"_main"
+.BEGFUNC "main",130,"_main"
 
-.LINE 117
+.LINE 130
 
 .DEFINE "argc"
 
@@ -12223,47 +12313,29 @@ _main:
 	PUSH	BC
 	PUSH	BC
 	DEC	SP
-;  118		int	i, j;
-;  119		UINT8 keycode, flags;
-;  120		UINT16 t;
-;  121		
-;  122		//putch(0x0C);		// CLS
-;  123		//DI();
-;  124		
-;  125		vdp_mode(1);
-.LINE 125
+;  131		int	i, j;
+;  132		UINT8 keycode, flags;
+;  133		UINT16 t;
+;  134		
+;  135		//putch(0x0C);		// CLS
+;  136		//DI();
+;  137		
+;  138		vdp_mode(1);
+.LINE 138
 
 	LD	BC,1
 	PUSH	BC
 	CALL	_vdp_mode
 	POP	BC
-;  126		//vdp_cursorDisable();
-;  127		vdp_cls();
-.LINE 127
+;  139		//vdp_cursorDisable();
+;  140		vdp_cls();
+.LINE 140
 
 	CALL	_vdp_cls
-;  128		
-;  129		
-;  130		printf("Hello World\n\r");
-.LINE 130
-
-	LD	BC,___print_uputch
-	LD	(___print_xputch),BC
-	LD	BC,L__2
-	PUSH	BC
-	CALL	___print_sendstring
-	POP	BC
-;  131		printf("Arguments:\n\r");
-.LINE 131
-
-	LD	BC,___print_uputch
-	LD	(___print_xputch),BC
-	LD	BC,L__3
-	PUSH	BC
-	CALL	___print_sendstring
-	POP	BC
-;  132		printf("- argc: %d\n\r", argc);
-.LINE 132
+;  141		
+;  142		
+;  143		printf("Hello World\n\r");
+.LINE 143
 
 	LD	BC,___print_uputch
 	LD	(___print_xputch),BC
@@ -12271,30 +12343,17 @@ _main:
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
-	LD	BC,(IX+%6)
-	CALL	__itol
-	LD	DE,BC
-	LD	C,A
-	LD	B,%0
-	PUSH	BC
-	PUSH	DE
-	CALL	__u_itoa
-	POP	BC
-	POP	BC
+;  144		printf("Arguments:\n\r");
+.LINE 144
+
+	LD	BC,___print_uputch
+	LD	(___print_xputch),BC
 	LD	BC,L__5
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
-;  133		
-;  134		for(i = 0; i < argc; i++) {
-.LINE 134
-
-	LD	BC,0
-	LD	(IX+%FFFFFFFD),BC
-	JR	L_5
-L_3:
-;  135			printf("- argv[%d]: %s\n\r", i, argv[i]);
-.LINE 135
+;  145		printf("- argc: %d\n\r", argc);
+.LINE 145
 
 	LD	BC,___print_uputch
 	LD	(___print_xputch),BC
@@ -12302,7 +12361,7 @@ L_3:
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
-	LD	BC,(IX+%FFFFFFFD)
+	LD	BC,(IX+%6)
 	CALL	__itol
 	LD	DE,BC
 	LD	C,A
@@ -12316,6 +12375,37 @@ L_3:
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
+;  146		
+;  147		for(i = 0; i < argc; i++) {
+.LINE 147
+
+	LD	BC,0
+	LD	(IX+%FFFFFFFD),BC
+	JR	L_10
+L_8:
+;  148			printf("- argv[%d]: %s\n\r", i, argv[i]);
+.LINE 148
+
+	LD	BC,___print_uputch
+	LD	(___print_xputch),BC
+	LD	BC,L__8
+	PUSH	BC
+	CALL	___print_sendstring
+	POP	BC
+	LD	BC,(IX+%FFFFFFFD)
+	CALL	__itol
+	LD	DE,BC
+	LD	C,A
+	LD	B,%0
+	PUSH	BC
+	PUSH	DE
+	CALL	__u_itoa
+	POP	BC
+	POP	BC
+	LD	BC,L__9
+	PUSH	BC
+	CALL	___print_sendstring
+	POP	BC
 	LD	HL,(IX+%FFFFFFFD)
 	LD	BC,HL
 	ADD	HL,HL
@@ -12326,33 +12416,33 @@ L_3:
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
-	LD	BC,L__8
+	LD	BC,L__10
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
 	LD	BC,(IX+%FFFFFFFD)
 	INC	BC
 	LD	(IX+%FFFFFFFD),BC
-;  136		}
-L_5:
-.LINE 136
+;  149		}
+L_10:
+.LINE 149
 
 	LD	BC,(IX+%6)
 	LD	HL,(IX+%FFFFFFFD)
 	OR	A,A
 	SBC	HL,BC
 	CALL	__setflag
-	JP	M,L_3
-;  137		
-;  138		// Upload sprite data to the VDP
-;  139		// Bitmaps 0 to 8 are for player + player bullet
-;  140		UploadBitmaps();
-.LINE 140
+	JP	M,L_8
+;  150		
+;  151		// Upload sprite data to the VDP
+;  152		// Bitmaps 0 to 8 are for player + player bullet
+;  153		UploadBitmaps();
+.LINE 153
 
 	CALL	_UploadBitmaps
-;  141		
-;  142		vdp_bitmapDraw(0, 200, 100);
-.LINE 142
+;  154		
+;  155		vdp_bitmapDraw(0, 200, 100);
+.LINE 155
 
 	LD	BC,100
 	PUSH	BC
@@ -12364,39 +12454,39 @@ L_5:
 	POP	BC
 	POP	BC
 	POP	BC
-;  143	
-;  144		// Set up sprites
-;  145		// Note: BBCBASIC procedure:
-;  146		//    1. Select sprite n   (VDU 23, 27, 4, n)
-;  147		//    2. Clear frames for current sprite  (VDU 23, 27, 5)
-;  148		//    3. Add bitmap 0 as frame 0 of current sprite (VDU 23, 27, 6, 0)
-;  149		//    4. Show the current sprite (VDU 23, 27, 11)
-;  150		//    5. Set total number of sprites to display (VDU 23, 27, 7, total)
-;  151		//   Move the sprites:
-;  152		//    1. Select sprite n (VDU 23, 27, 4, n)
-;  153		//    2. Move selected sprite to  (VDU 23, 27, 13, X, Y) 
-;  154		//   Refresh the sprites
-;  155		//    1. *FX19    (wait for VSYNC)
-;  156		//    2. Refresh (VDU 23, 27, 15)
-;  157		
-;  158	/* 	vdp_spriteSelect(0);
-;  159		vdp_spriteClearFramesSelected();
-;  160		vdp_spriteAddFrameSelected(0);
-;  161		vdp_spriteShowSelected();
-;  162		vdp_spriteActivateTotal(1);
-;  163		
-;  164		vdp_spriteSelect(0);
-;  165		vdp_spriteMoveToSelected(100, 100); */
-;  166		
-;  167		vdp_spriteClearFrames(0);
-.LINE 167
+;  156	
+;  157		// Set up sprites
+;  158		// Note: BBCBASIC procedure:
+;  159		//    1. Select sprite n   (VDU 23, 27, 4, n)
+;  160		//    2. Clear frames for current sprite  (VDU 23, 27, 5)
+;  161		//    3. Add bitmap 0 as frame 0 of current sprite (VDU 23, 27, 6, 0)
+;  162		//    4. Show the current sprite (VDU 23, 27, 11)
+;  163		//    5. Set total number of sprites to display (VDU 23, 27, 7, total)
+;  164		//   Move the sprites:
+;  165		//    1. Select sprite n (VDU 23, 27, 4, n)
+;  166		//    2. Move selected sprite to  (VDU 23, 27, 13, X, Y) 
+;  167		//   Refresh the sprites
+;  168		//    1. *FX19    (wait for VSYNC)
+;  169		//    2. Refresh (VDU 23, 27, 15)
+;  170		
+;  171	/* 	vdp_spriteSelect(0);
+;  172		vdp_spriteClearFramesSelected();
+;  173		vdp_spriteAddFrameSelected(0);
+;  174		vdp_spriteShowSelected();
+;  175		vdp_spriteActivateTotal(1);
+;  176		
+;  177		vdp_spriteSelect(0);
+;  178		vdp_spriteMoveToSelected(100, 100); */
+;  179		
+;  180		vdp_spriteClearFrames(0);
+.LINE 180
 
 	LD	BC,0
 	PUSH	BC
 	CALL	_vdp_spriteClearFrames
 	POP	BC
-;  168		vdp_spriteAddFrame(0, 0);
-.LINE 168
+;  181		vdp_spriteAddFrame(0, 0);
+.LINE 181
 
 	LD	BC,0
 	PUSH	BC
@@ -12404,23 +12494,23 @@ L_5:
 	CALL	_vdp_spriteAddFrame
 	POP	BC
 	POP	BC
-;  169		vdp_spriteShow(0);
-.LINE 169
+;  182		vdp_spriteShow(0);
+.LINE 182
 
 	LD	BC,0
 	PUSH	BC
 	CALL	_vdp_spriteShow
 	POP	BC
-;  170		vdp_spriteActivateTotal(1);
-.LINE 170
+;  183		vdp_spriteActivateTotal(1);
+.LINE 183
 
 	LD	BC,1
 	PUSH	BC
 	CALL	_vdp_spriteActivateTotal
 	POP	BC
-;  171		
-;  172		vdp_spriteMoveTo(0, 100, 100);
-.LINE 172
+;  184		
+;  185		vdp_spriteMoveTo(0, 100, 100);
+.LINE 185
 
 	LD	BC,100
 	PUSH	BC
@@ -12431,56 +12521,56 @@ L_5:
 	POP	BC
 	POP	BC
 	POP	BC
-;  173		
-;  174	//	waitvblank();
-;  175		vdp_spriteRefresh();
-.LINE 175
+;  186		
+;  187	//	waitvblank();
+;  188		vdp_spriteRefresh();
+.LINE 188
 
 	CALL	_vdp_spriteRefresh
-;  176	
-;  177	
-;  178	/*
-;  179		vdp_spriteClearFrames(0);
-;  180		vdp_spriteClearFrames(1);
-;  181		vdp_spriteClearFrames(2);
-;  182		vdp_spriteClearFrames(3);
-;  183		vdp_spriteAddFrame(0, 0);			// player
-;  184		vdp_spriteAddFrame(1, 1);			// player bullet
-;  185		vdp_spriteAddFrame(2, 2);			// ufo frame 0
-;  186		vdp_spriteAddFrame(2, 3);			// ufo frame 1
-;  187		vdp_spriteAddFrame(2, 4);			// ufo frame 2
-;  188		vdp_spriteAddFrame(3, 5);			// ufo bullet
 ;  189	
-;  190		vdp_spriteMoveTo(0, 100, 100);
-;  191		vdp_spriteMoveTo(2, 140, 140);
-;  192	
-;  193		vdp_spriteSelect(0);
-;  194		vdp_spriteSetFrameSelected(0);
-;  195		vdp_spriteMoveToSelected(100, 100);
-;  196		
-;  197		vdp_spriteActivateTotal(3);
-;  198	*/
-;  199		EI();
-.LINE 199
+;  190	
+;  191	/*
+;  192		vdp_spriteClearFrames(0);
+;  193		vdp_spriteClearFrames(1);
+;  194		vdp_spriteClearFrames(2);
+;  195		vdp_spriteClearFrames(3);
+;  196		vdp_spriteAddFrame(0, 0);			// player
+;  197		vdp_spriteAddFrame(1, 1);			// player bullet
+;  198		vdp_spriteAddFrame(2, 2);			// ufo frame 0
+;  199		vdp_spriteAddFrame(2, 3);			// ufo frame 1
+;  200		vdp_spriteAddFrame(2, 4);			// ufo frame 2
+;  201		vdp_spriteAddFrame(3, 5);			// ufo bullet
+;  202	
+;  203		vdp_spriteMoveTo(0, 100, 100);
+;  204		vdp_spriteMoveTo(2, 140, 140);
+;  205	
+;  206		vdp_spriteSelect(0);
+;  207		vdp_spriteSetFrameSelected(0);
+;  208		vdp_spriteMoveToSelected(100, 100);
+;  209		
+;  210		vdp_spriteActivateTotal(3);
+;  211	*/
+;  212		EI();
+.LINE 212
 
 	ei
-;  200		
-;  201		for (i = 0; i < 300; i++)
-.LINE 201
+;  213		
+;  214		for (i = 0; i < 300; i++)
+.LINE 214
 
 	LD	BC,0
 	LD	(IX+%FFFFFFFD),BC
-	JR	L_10
-L_8:
-;  202			{
-;  203			waitvblank();
-.LINE 203
+	JR	L_15
+L_13:
+;  215			{
+;  216			waitvblank();
+.LINE 216
 
 	CALL	_waitvblank
-;  204			//for (j = 0; j < 5000; j++) { }
-;  205			//vdp_scroll(0, 1, 1);
-;  206			vdp_plotColour(rand255(), rand255(), rand255());
-.LINE 206
+;  217			//for (j = 0; j < 5000; j++) { }
+;  218			//vdp_scroll(0, 1, 1);
+;  219			vdp_plotColour(rand255(), rand255(), rand255());
+.LINE 219
 
 	CALL	_rand255
 	LD	C,A
@@ -12498,8 +12588,8 @@ L_8:
 	POP	BC
 	POP	BC
 	POP	BC
-;  207			vdp_plotPoint(319, rand255());
-.LINE 207
+;  220			vdp_plotPoint(319, rand255());
+.LINE 220
 
 	CALL	_rand255
 	UEXT	HL
@@ -12510,8 +12600,8 @@ L_8:
 	CALL	_vdp_plotPoint
 	POP	BC
 	POP	BC
-;  208			vdp_spriteMoveBy(0, 1, 0);
-.LINE 208
+;  221			vdp_spriteMoveBy(0, 1, 0);
+.LINE 221
 
 	LD	BC,0
 	PUSH	BC
@@ -12523,16 +12613,16 @@ L_8:
 	POP	BC
 	POP	BC
 	POP	BC
-;  209			//vdp_spriteRefresh();
-;  210				
-;  211			//keycode = getsysvar8bit(sysvar_keycode);
-;  212			//keycode = getch();
-;  213			//printf("%d\n\r", keycode);
-;  214			//if (27 == keycode)
-;  215			//	break;
-;  216			//flags = (UINT8)getsysvar16bit(sysvar_time);	//sysvar_vpd_pflags);
-;  217			t = getsysvar16bit(sysvar_time);
-.LINE 217
+;  222			//vdp_spriteRefresh();
+;  223				
+;  224			//keycode = getsysvar8bit(sysvar_keycode);
+;  225			//keycode = getch();
+;  226			//printf("%d\n\r", keycode);
+;  227			//if (27 == keycode)
+;  228			//	break;
+;  229			//flags = (UINT8)getsysvar16bit(sysvar_time);	//sysvar_vpd_pflags);
+;  230			t = getsysvar16bit(sysvar_time);
+.LINE 230
 
 	LD	BC,0
 	PUSH	BC
@@ -12540,8 +12630,8 @@ L_8:
 	POP	BC
 	LD	(IX+%FFFFFFFB),L
 	LD	(IX+%FFFFFFFC),H
-;  218			printf("%d\n\r", t);
-.LINE 218
+;  231			printf("%d\n\r", t);
+.LINE 231
 
 	LD	BC,___print_uputch
 	LD	(___print_xputch),BC
@@ -12557,52 +12647,52 @@ L_8:
 	CALL	__u_itoa
 	POP	BC
 	POP	BC
-	LD	BC,L__10
+	LD	BC,L__12
 	PUSH	BC
 	CALL	___print_sendstring
 	POP	BC
 	LD	BC,(IX+%FFFFFFFD)
 	INC	BC
 	LD	(IX+%FFFFFFFD),BC
-;  219			//flags = getsysvar8bit(sysvar_time);
-;  220			//printf("%d\n\r", flags);
-;  221			}
-L_10:
-.LINE 221
+;  232			//flags = getsysvar8bit(sysvar_time);
+;  233			//printf("%d\n\r", flags);
+;  234			}
+L_15:
+.LINE 234
 
 	LD	BC,300
 	LD	HL,(IX+%FFFFFFFD)
 	OR	A,A
 	SBC	HL,BC
 	CALL	__setflag
-	JP	M,L_8
-;  222			
-;  223		vdp_cursorEnable();
-.LINE 223
+	JP	M,L_13
+;  235			
+;  236		vdp_cursorEnable();
+.LINE 236
 
 	CALL	_vdp_cursorEnable
-;  224		
-;  225		putch(0x0D);		// CR
-.LINE 225
+;  237		
+;  238		putch(0x0D);		// CR
+.LINE 238
 
 	LD	BC,13
 	PUSH	BC
 	CALL	_putch
 	POP	BC
-;  226		putch(0x0D);		// CR
-.LINE 226
+;  239		putch(0x0D);		// CR
+.LINE 239
 
 	LD	BC,13
 	PUSH	BC
 	CALL	_putch
 	POP	BC
-;  227		
-;  228		return 0;
-.LINE 228
+;  240		
+;  241		return 0;
+.LINE 241
 
 	OR	A,A
 	SBC	HL,HL
-.LINE 229
+.LINE 242
 
 	LD	SP,IX
 	POP	IX
@@ -12644,34 +12734,35 @@ L_10:
 ;       Spill Code: 0 (instruction)
 
 
-.ENDFUNC "main",229,"_main"
+.ENDFUNC "main",242,"_main"
 	SEGMENT STRSECT
-L__2:
+L__4:
 	DB	"Hello World"
 	DB	10,13,0
-L__3:
+L__5:
 	DB	"Arguments:"
 	DB	10,13,0
-L__4:
+L__6:
 	DB	"- argc: "
 	DB	0
-L__5:
+L__7:
 	DB	10,13,0
-L__6:
+L__8:
 	DB	"- argv["
 	DB	0
-L__7:
+L__9:
 	DB	"]: "
 	DB	0
-L__8:
-	DB	10,13,0
 L__10:
+	DB	10,13,0
+L__12:
 	DB	10,13,0
 	XREF _rand:ROM
 	XREF _vdp_spriteRefresh:ROM
 	XREF _vdp_spriteActivateTotal:ROM
 	XREF _vdp_spriteMoveBy:ROM
 	XREF _vdp_spriteMoveTo:ROM
+	XREF _vdp_spriteHide:ROM
 	XREF _vdp_spriteShow:ROM
 	XREF _vdp_spriteAddFrame:ROM
 	XREF _vdp_spriteClearFrames:ROM
@@ -12693,6 +12784,7 @@ L__10:
 	XREF __itol:ROM
 	XREF __setflag:ROM
 	XDEF _main
+	XDEF _SetupSprites
 	XDEF _UploadBitmaps
 	XDEF _rand255
 	XDEF _bbirdData
