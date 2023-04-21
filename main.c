@@ -7,8 +7,15 @@
  * Modinfo:
  */
  
+// Ideas:
+// 1. Big bird splits into 2 when shot
+// 2. Dead birds drop from the sky, can kill you
+// 3. If you clip a bird's wing, it drops down with erratic side movement
+
 #include <stdio.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <gpio.h>				// For joystick
 #include "mos-interface.h"
 #include "vdp.h"
 
@@ -17,6 +24,9 @@
 #include "sprites/explosions.h"
 #include "sprites/bird_16x12.h"
 #include "sprites/bird_32x24.h" 
+
+#define SCREEN_WIDTH	320
+#define SCREEN_HEIGHT	200
 
 #define MAX_SPRITES		32
 #define BITMAP_WIDTH		16
@@ -60,6 +70,54 @@ enum {
 	BID_BBIRD6			
 	
 };
+
+// Game object
+typedef struct
+{
+	UINT8 type;
+	UINT16 x;
+	UINT16 y;
+	UINT8 imageId;				// "base" image id
+	UINT8 frame;					// Current frame of animation
+	UINT8 state;					// Current state of this object
+	UINT16 counter;				// Internal counter for object logic
+} OBJECT;
+
+OBJECT objects[MAX_SPRITES] = {
+	{ 0, 120, 50, BID_PLAYER0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
+};
+	
 
 UINT8 rand255()
 {
@@ -117,36 +175,58 @@ void UploadBitmaps()
 void SetupSprites(UINT8 level)
 {
 	UINT8 i;
-	for (i = 0; i < MAX_SPRITES; i++)
+	for (i = 1; i < MAX_SPRITES; i++)
 		{
 		vdp_spriteHide(i);
 		}
-	
-	
+		
+	for (i = 1; i < 10; i++)
+		{
+		objects[i].x = rand255();
+		objects[i].y = i * 20 - 20;
+		vdp_spriteClearFrames(i);
+/* 		vdp_spriteAddFrame(i, BID_SBIRD0);
+		vdp_spriteAddFrame(i, BID_SBIRD1);
+		vdp_spriteAddFrame(i, BID_SBIRD2);
+		vdp_spriteAddFrame(i, BID_SBIRD3);
+		vdp_spriteAddFrame(i, BID_SBIRD4);
+		vdp_spriteAddFrame(i, BID_SBIRD5);
+		vdp_spriteAddFrame(i, BID_SBIRD6); */
+		vdp_spriteAddFrame(i, BID_BBIRD0);
+		vdp_spriteAddFrame(i, BID_BBIRD1);
+		vdp_spriteAddFrame(i, BID_BBIRD2);
+		vdp_spriteAddFrame(i, BID_BBIRD3);
+		vdp_spriteAddFrame(i, BID_BBIRD4);
+		vdp_spriteAddFrame(i, BID_BBIRD5);
+		vdp_spriteAddFrame(i, BID_BBIRD6);
+		vdp_spriteShow(i);
+		}
 }
 
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
 int main(int argc, char * argv[]) {
 	int	i, j;
-	UINT8 keycode, flags;
+	UINT8 keycode, stick, flags;
 	UINT16 t;
 	
 	//putch(0x0C);		// CLS
 	//DI();
 	
-	vdp_mode(1);
-	//vdp_cursorDisable();
+	vdp_mode(2);
+	vdp_cursorDisable();
 	vdp_cls();
+
+	// Set GPIO port C as input (mode 2)
+	setmode_PortC(0xFF, GPIOMODE_INPUT) ;
 	
-	
-	printf("Hello World\n\r");
+/* 	printf("Hello World\n\r");
 	printf("Arguments:\n\r");
 	printf("- argc: %d\n\r", argc);
 	
 	for(i = 0; i < argc; i++) {
 		printf("- argv[%d]: %s\n\r", i, argv[i]);
-	}
+	} */
 	
 	// Upload sprite data to the VDP
 	// Bitmaps 0 to 8 are for player + player bullet
@@ -177,15 +257,9 @@ int main(int argc, char * argv[]) {
 	vdp_spriteSelect(0);
 	vdp_spriteMoveToSelected(100, 100); */
 	
-	vdp_spriteClearFrames(0);
-	vdp_spriteAddFrame(0, 0);
-	vdp_spriteShow(0);
-	vdp_spriteActivateTotal(1);
 	
-	vdp_spriteMoveTo(0, 100, 100);
 	
-//	waitvblank();
-	vdp_spriteRefresh();
+
 
 
 /*
@@ -209,34 +283,86 @@ int main(int argc, char * argv[]) {
 	
 	vdp_spriteActivateTotal(3);
 */
-	EI();
+	//EI();
 	
-	for (i = 0; i < 300; i++)
+	SetupSprites(0);
+	vdp_spriteActivateTotal(10);
+	
+	vdp_spriteClearFrames(0);
+	vdp_spriteAddFrame(0, BID_PLAYER0);
+	vdp_spriteShow(0);
+	vdp_spriteMoveTo(0, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
+	
+//	waitvblank();
+	vdp_spriteRefresh();
+	
+	for (i = 0; i < 500; i++)
 		{
 		waitvblank();
+		
+		for (j = 1; j < 10; j++)
+			{
+			if (0 == objects[j].state)
+				{
+				objects[j].x++;
+				if (objects[j].x == 319)
+					objects[j].state = 1;
+				}
+			else if (1 == objects[j].state)
+				{
+				objects[j].x--;
+				if (objects[j].x == 0)
+					objects[j].state = 0;
+				}
+				
+			vdp_spriteMoveTo(j, objects[j].x, objects[j].y);
+			//vdp_spriteSetFrame(j, (UINT8)(objects[j].x / 16) % 7);
+			if (0 == (i & 0x7))
+				vdp_spriteNextFrame(j);
+			}
+			
 		//for (j = 0; j < 5000; j++) { }
 		//vdp_scroll(0, 1, 1);
-		vdp_plotColour(rand255(), rand255(), rand255());
-		vdp_plotPoint(319, rand255());
-		vdp_spriteMoveBy(0, 1, 0);
+		vdp_plotColour(rand255());
+		vdp_plotPoint(rand255() * 4, rand255() * 4);
 		//vdp_spriteRefresh();
+
 			
 		//keycode = getsysvar8bit(sysvar_keycode);
-		//keycode = getch();
+		//keycode = getkeycode();
+		keycode = getsysvar_keyascii();
 		//printf("%d\n\r", keycode);
-		//if (27 == keycode)
-		//	break;
+		if (27 == keycode)
+			break;
+		
+		if (8 == keycode)
+			vdp_spriteMoveBy(0, -2, 0);
+		else if (21 == keycode)
+			vdp_spriteMoveBy(0, 2, 0);
+		
+		if (32 == keycode)
+			{
+			// Fire	
+			}
+			
+			
+		//stick = inp(0x9E);
+		GETDR_PORTC(stick);
+		//printf("%d- ", stick);
+		if (0 == (stick & 8))
+			vdp_spriteMoveBy(0, -2, 0);
+		else if (0 == (stick & 16))
+			vdp_spriteMoveBy(0, 2, 0);
+		
 		//flags = (UINT8)getsysvar16bit(sysvar_time);	//sysvar_vpd_pflags);
-		t = getsysvar16bit(sysvar_time);
-		printf("%d\n\r", t);
+		//t = getsysvar16bit(sysvar_time);
+		//printf("%d\n\r", t);
 		//flags = getsysvar8bit(sysvar_time);
 		//printf("%d\n\r", flags);
 		}
 		
 	vdp_cursorEnable();
 	
-	putch(0x0D);		// CR
-	putch(0x0D);		// CR
-	
+
 	return 0;
 }

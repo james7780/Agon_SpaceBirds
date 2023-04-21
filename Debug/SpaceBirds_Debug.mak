@@ -154,17 +154,14 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
             $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
             $(INCLUDE_ESCSPACE)\std\Stdio.h  \
-            $(INCLUDE_ESCSPACE)\zilog\defines.h
+            $(INCLUDE_ESCSPACE)\std\Stdlib.h
 	 $(CC) $(CFLAGS) "$(PRJDIR)\main.c"
 
 $(WORKDIR_ESCSPACE)\mos-interface.obj :  \
-            $(PRJDIR_ESCSPACE)\mos-interface.asm  \
-            $(PRJDIR_ESCSPACE)\mos_api.inc
+            $(PRJDIR_ESCSPACE)\mos-interface.asm
 	 $(AS) $(ASFLAGS) "$(PRJDIR)\mos-interface.asm"
 
 $(WORKDIR_ESCSPACE)\vdp.obj :  \
-            $(PRJDIR_ESCSPACE)\vdp.c  \
-            $(PRJDIR_ESCSPACE)\mos-interface.h  \
-            $(INCLUDE_ESCSPACE)\zilog\defines.h
+            $(PRJDIR_ESCSPACE)\vdp.c
 	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp.c"
 
