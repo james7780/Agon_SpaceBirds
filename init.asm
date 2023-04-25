@@ -41,7 +41,7 @@ argv_ptrs_max:		EQU	16			; Maximum number of arguments allowed in argv
 			DB	00h			; MOS header version 0
 			DB	01h			; Flag for run mode (0: Z80, 1: ADL)
 
-_exec_name:		DB	"CRITTERS.BIN", 0		; The executable name, only used in argv
+_exec_name:		DB	"SpaceBirds.BIN", 0		; The executable name, only used in argv
 
 ;
 ; And the code follows on immediately after the header

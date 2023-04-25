@@ -2,9 +2,10 @@
  * Title:			Space Critters for Agon Light
  * Author:			James Higgs (Jum Hig)
  * Created:			2023
- * Last Updated:		2023-02-22
+ * Last Updated:		2023-04-21
  *
- * Modinfo:
+ * Revisions:
+ * 2023-04-21 - Updated to use MOS 1.03
  */
  
 // Ideas:
@@ -161,14 +162,7 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_BBIRD4, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[4]);
 	vdp_bitmapSendData(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5]);
 	vdp_bitmapSendData(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6]);
-	
-/* 	vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-	vdp_bitmapSendData(0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-	vdp_bitmapSendData(1, BITMAP_WIDTH, BITMAP_HEIGHT, playerBulletData);
-	vdp_bitmapSendData(2, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[0]);	
-	vdp_bitmapSendData(3, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[1]);
-	vdp_bitmapSendData(4, BITMAP_WIDTH, BITMAP_HEIGHT, ufoData[2]);
-	vdp_bitmapSendData(5, BITMAP_WIDTH, BITMAP_HEIGHT, ufoBulletData); */	
+
 }
 
 // Setup the sprites according to the level
@@ -198,7 +192,7 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrame(i, BID_BBIRD3);
 		vdp_spriteAddFrame(i, BID_BBIRD4);
 		vdp_spriteAddFrame(i, BID_BBIRD5);
-		vdp_spriteAddFrame(i, BID_BBIRD6);
+		vdp_spriteAddFrame(i, BID_BBIRD6); 
 		vdp_spriteShow(i);
 		}
 }
@@ -206,19 +200,17 @@ void SetupSprites(UINT8 level)
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
 int main(int argc, char * argv[]) {
-	int	i, j;
+	UINT16 i, j;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
 	
-	//putch(0x0C);		// CLS
-	//DI();
-	
 	vdp_mode(2);
-	vdp_cursorDisable();
+//	vdp_cursorDisable();
 	vdp_cls();
 
 	// Set GPIO port C as input (mode 2)
-	setmode_PortC(0xFF, GPIOMODE_INPUT) ;
+//	printf("Setting up GPIO port C for joystick...\n\r");
+//	setmode_PortC(0xFF, GPIOMODE_INPUT) ;
 	
 /* 	printf("Hello World\n\r");
 	printf("Arguments:\n\r");
@@ -230,6 +222,7 @@ int main(int argc, char * argv[]) {
 	
 	// Upload sprite data to the VDP
 	// Bitmaps 0 to 8 are for player + player bullet
+	printf("Uploading bitmaps...\n\r");
 	UploadBitmaps();
 	
 	vdp_bitmapDraw(0, 200, 100);
@@ -283,22 +276,26 @@ int main(int argc, char * argv[]) {
 	
 	vdp_spriteActivateTotal(3);
 */
-	//EI();
-	
+
+	printf("Setting up sprites...\n\r");
 	SetupSprites(0);
-	vdp_spriteActivateTotal(10);
+
+//	getch();
 	
 	vdp_spriteClearFrames(0);
 	vdp_spriteAddFrame(0, BID_PLAYER0);
 	vdp_spriteShow(0);
 	vdp_spriteMoveTo(0, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
 	
-//	waitvblank();
+
+	vdp_spriteActivateTotal(10);
 	vdp_spriteRefresh();
-	
+//	getch();
+		
 	for (i = 0; i < 500; i++)
 		{
 		waitvblank();
+		
 		
 		for (j = 1; j < 10; j++)
 			{
@@ -321,7 +318,6 @@ int main(int argc, char * argv[]) {
 				vdp_spriteNextFrame(j);
 			}
 			
-		//for (j = 0; j < 5000; j++) { }
 		//vdp_scroll(0, 1, 1);
 		vdp_plotColour(rand255());
 		vdp_plotPoint(rand255() * 4, rand255() * 4);
@@ -334,7 +330,8 @@ int main(int argc, char * argv[]) {
 		//printf("%d\n\r", keycode);
 		if (27 == keycode)
 			break;
-		
+
+/*		
 		if (8 == keycode)
 			vdp_spriteMoveBy(0, -2, 0);
 		else if (21 == keycode)
@@ -344,25 +341,27 @@ int main(int argc, char * argv[]) {
 			{
 			// Fire	
 			}
-			
-			
-		//stick = inp(0x9E);
+*/			
+
 		GETDR_PORTC(stick);
 		//printf("%d- ", stick);
+		//stick = 255;
 		if (0 == (stick & 8))
 			vdp_spriteMoveBy(0, -2, 0);
 		else if (0 == (stick & 16))
 			vdp_spriteMoveBy(0, 2, 0);
-		
+/*		
 		//flags = (UINT8)getsysvar16bit(sysvar_time);	//sysvar_vpd_pflags);
 		//t = getsysvar16bit(sysvar_time);
 		//printf("%d\n\r", t);
 		//flags = getsysvar8bit(sysvar_time);
 		//printf("%d\n\r", flags);
+*/
 		}
-		
-	vdp_cursorEnable();
 	
-
+//	vdp_cursorEnable();
+	
+//	vdp_mode(1);
+ 
 	return 0;
 }
