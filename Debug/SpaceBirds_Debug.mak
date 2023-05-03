@@ -149,19 +149,36 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\sprites\explosions.h  \
             $(PRJDIR_ESCSPACE)\sprites\playerShip.h  \
             $(PRJDIR_ESCSPACE)\sprites\ufos.h  \
+            $(PRJDIR_ESCSPACE)\stdint.h  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
             $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
             $(INCLUDE_ESCSPACE)\std\Stdio.h  \
-            $(INCLUDE_ESCSPACE)\std\Stdlib.h
+            $(INCLUDE_ESCSPACE)\std\Stdlib.h  \
+            $(INCLUDE_ESCSPACE)\zilog\cio.h  \
+            $(INCLUDE_ESCSPACE)\zilog\defines.h  \
+            $(INCLUDE_ESCSPACE)\zilog\eZ80190.h  \
+            $(INCLUDE_ESCSPACE)\zilog\eZ80F91.h  \
+            $(INCLUDE_ESCSPACE)\zilog\eZ80F92.h  \
+            $(INCLUDE_ESCSPACE)\zilog\eZ80F93.h  \
+            $(INCLUDE_ESCSPACE)\zilog\eZ80L92.h  \
+            $(INCLUDE_ESCSPACE)\zilog\ez80.h  \
+            $(INCLUDE_ESCSPACE)\zilog\gpio.h  \
+            $(INCLUDE_ESCSPACE)\zilog\uart.h  \
+            $(INCLUDE_ESCSPACE)\zilog\uartdefs.h
 	 $(CC) $(CFLAGS) "$(PRJDIR)\main.c"
 
 $(WORKDIR_ESCSPACE)\mos-interface.obj :  \
-            $(PRJDIR_ESCSPACE)\mos-interface.asm
+            $(PRJDIR_ESCSPACE)\mos-interface.asm  \
+            $(PRJDIR_ESCSPACE)\mos_api.inc
 	 $(AS) $(ASFLAGS) "$(PRJDIR)\mos-interface.asm"
 
 $(WORKDIR_ESCSPACE)\vdp.obj :  \
-            $(PRJDIR_ESCSPACE)\vdp.c
+            $(PRJDIR_ESCSPACE)\vdp.c  \
+            $(PRJDIR_ESCSPACE)\mos-interface.h  \
+            $(PRJDIR_ESCSPACE)\stdint.h  \
+            $(PRJDIR_ESCSPACE)\vdp.h  \
+            $(INCLUDE_ESCSPACE)\zilog\defines.h
 	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp.c"
 

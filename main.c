@@ -33,6 +33,9 @@
 #define BITMAP_WIDTH		16
 #define BITMAP_HEIGHT	16	
 
+#define FIRSTENEMYID	2				// index of the first enemy in the object array
+#define LASTENEMYID	9				// index of the last enemy in the object array
+
 // Bitmaps ids
 enum {
 	BID_PLAYER0 = 0,			// 0 to 7 - Player and player bullet bitmap id's
@@ -70,6 +73,15 @@ enum {
 	BID_BBIRD5,				
 	BID_BBIRD6			
 	
+};
+
+// Object states
+enum {
+	ST_INACTIVE = 0,
+	ST_ACTIVE,
+	ST_MOVELEFT,
+	ST_MOVERIGHT,
+	ST_DYING 
 };
 
 // Game object
@@ -174,11 +186,36 @@ void SetupSprites(UINT8 level)
 		vdp_spriteHide(i);
 		}
 		
-	for (i = 1; i < 10; i++)
+	// Set up player sprite
+	vdp_spriteSelect(0);		
+	vdp_spriteClearFramesSelected();
+	vdp_spriteAddFrameSelected(BID_PLAYER0);
+	vdp_spriteAddFrameSelected(BID_PLAYER1);
+	vdp_spriteAddFrameSelected(BID_PLAYER2);
+	vdp_spriteAddFrameSelected(BID_PLAYER3);
+	vdp_spriteShowSelected();
+	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
+	objects[0].x = SCREEN_WIDTH / 2;
+	objects[0].y = SCREEN_HEIGHT - 20;
+	objects[0].state = ST_ACTIVE;		
+
+	// Set up bullet sprite
+	vdp_spriteSelect(1);
+	vdp_spriteAddFrameSelected(BID_PLAYERBULLET);
+	vdp_spriteHideSelected();
+	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT);		// Offscreen
+	objects[1].x = SCREEN_WIDTH / 2;
+	objects[1].y = SCREEN_HEIGHT;
+	objects[1].state = ST_INACTIVE;
+		
+	for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
 		{
 		objects[i].x = rand255();
-		objects[i].y = i * 20 - 20;
-		vdp_spriteClearFrames(i);
+		objects[i].y = (i - FIRSTENEMYID) * 20;
+		objects[i].state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+		objects[i].frame = i % 7;
+		vdp_spriteSelect(i);
+		vdp_spriteClearFramesSelected();
 /* 		vdp_spriteAddFrame(i, BID_SBIRD0);
 		vdp_spriteAddFrame(i, BID_SBIRD1);
 		vdp_spriteAddFrame(i, BID_SBIRD2);
@@ -186,14 +223,23 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrame(i, BID_SBIRD4);
 		vdp_spriteAddFrame(i, BID_SBIRD5);
 		vdp_spriteAddFrame(i, BID_SBIRD6); */
-		vdp_spriteAddFrame(i, BID_BBIRD0);
-		vdp_spriteAddFrame(i, BID_BBIRD1);
-		vdp_spriteAddFrame(i, BID_BBIRD2);
-		vdp_spriteAddFrame(i, BID_BBIRD3);
-		vdp_spriteAddFrame(i, BID_BBIRD4);
-		vdp_spriteAddFrame(i, BID_BBIRD5);
-		vdp_spriteAddFrame(i, BID_BBIRD6); 
-		vdp_spriteShow(i);
+		vdp_spriteAddFrameSelected(BID_BBIRD0);
+		vdp_spriteAddFrameSelected(BID_BBIRD1);
+		vdp_spriteAddFrameSelected(BID_BBIRD2);
+		vdp_spriteAddFrameSelected(BID_BBIRD3);
+		vdp_spriteAddFrameSelected(BID_BBIRD4);
+		vdp_spriteAddFrameSelected(BID_BBIRD5);
+		vdp_spriteAddFrameSelected(BID_BBIRD6);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION0);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION1);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION2);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION3);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION4);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION5);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION6);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION7);
+		vdp_spriteSetFrameSelected(objects[i].frame);
+		vdp_spriteShowSelected();
 		}
 }
 
@@ -205,7 +251,7 @@ int main(int argc, char * argv[]) {
 	UINT16 t;
 	
 	vdp_mode(2);
-//	vdp_cursorDisable();
+	vdp_cursorDisable();
 	vdp_cls();
 
 	// Set GPIO port C as input (mode 2)
@@ -225,7 +271,7 @@ int main(int argc, char * argv[]) {
 	printf("Uploading bitmaps...\n\r");
 	UploadBitmaps();
 	
-	vdp_bitmapDraw(0, 200, 100);
+	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
 
 	// Set up sprites
 	// Note: BBCBASIC procedure:
@@ -282,46 +328,98 @@ int main(int argc, char * argv[]) {
 
 //	getch();
 	
-	vdp_spriteClearFrames(0);
-	vdp_spriteAddFrame(0, BID_PLAYER0);
-	vdp_spriteShow(0);
-	vdp_spriteMoveTo(0, SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
+	vdp_cls();
 	
 
 	vdp_spriteActivateTotal(10);
 	vdp_spriteRefresh();
 //	getch();
 		
-	for (i = 0; i < 500; i++)
+	for (i = 0; i < 1000; i++)
 		{
 		waitvblank();
 		
-		
-		for (j = 1; j < 10; j++)
+		// Move enemies
+		for (j = FIRSTENEMYID; j <= LASTENEMYID; j++)
 			{
-			if (0 == objects[j].state)
+			if (ST_INACTIVE == objects[j].state)
+				continue;
+
+			if (ST_MOVERIGHT == objects[j].state)
 				{
 				objects[j].x++;
 				if (objects[j].x == 319)
-					objects[j].state = 1;
+					objects[j].state = ST_MOVELEFT;
 				}
-			else if (1 == objects[j].state)
+			else if (ST_MOVELEFT == objects[j].state)
 				{
 				objects[j].x--;
 				if (objects[j].x == 0)
-					objects[j].state = 0;
+					objects[j].state = ST_MOVERIGHT;
 				}
-				
-			vdp_spriteMoveTo(j, objects[j].x, objects[j].y);
-			//vdp_spriteSetFrame(j, (UINT8)(objects[j].x / 16) % 7);
-			if (0 == (i & 0x7))
-				vdp_spriteNextFrame(j);
+			
+			if (ST_DYING == objects[j].state)
+				{
+				objects[j].counter++;
+				if (0 == (objects[j].counter & 0x3))
+					vdp_spriteNextFrame(j);
+				if (31 == objects[j].counter)
+					{
+					objects[j].counter = 0;
+					objects[j].state = ST_INACTIVE;
+					vdp_spriteHide(j);
+					}
+				}
+			else
+				{
+				vdp_spriteMoveTo(j, objects[j].x, objects[j].y);
+				objects[j].frame++;
+				vdp_spriteSetFrame(j, (UINT8)(objects[j].frame / 8) % 7);
+				//if (0 == (i & 0x7))
+				//	vdp_spriteNextFrame(j);
+				}
+			}
+			
+		// Update bullet
+		if (ST_ACTIVE == objects[1].state)
+			{
+			vdp_spriteMoveTo(1, objects[1].x, objects[1].y);
+			objects[1].y -= 4;
+			if (objects[1].y < 4)
+				{
+				objects[1].state = ST_INACTIVE;
+				vdp_spriteHide(1);
+				}
+			else
+				{
+				// Check bullet against birds (collision)
+				for (j = FIRSTENEMYID; j <= LASTENEMYID; j++)
+					{
+					if (ST_INACTIVE == objects[j].state || ST_DYING == objects[j].state)
+						continue;
+
+					if (abs(objects[j].x - objects[1].x) < 10)
+						{
+						t = objects[1].y - objects[j].y;			// UINT16
+						if (t < 16)
+							{
+							// Kill the enemy
+							objects[j].state = ST_DYING;			// Start dying animation
+							objects[j].counter = 0;
+							vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
+							// Also kill the bullet
+							objects[1].state = ST_INACTIVE;
+							vdp_spriteHide(1);
+							}
+
+						}
+					}
+				}
 			}
 			
 		//vdp_scroll(0, 1, 1);
-		vdp_plotColour(rand255());
-		vdp_plotPoint(rand255() * 4, rand255() * 4);
-		//vdp_spriteRefresh();
+		//vdp_plotColour(rand255());
+		//vdp_plotPoint(rand255() * 4, rand255() * 4);
 
 			
 		//keycode = getsysvar8bit(sysvar_keycode);
@@ -343,13 +441,27 @@ int main(int argc, char * argv[]) {
 			}
 */			
 
+		// Read joystick and update player position and sprite
 		GETDR_PORTC(stick);
 		//printf("%d- ", stick);
 		//stick = 255;
-		if (0 == (stick & 8))
-			vdp_spriteMoveBy(0, -2, 0);
-		else if (0 == (stick & 16))
-			vdp_spriteMoveBy(0, 2, 0);
+		if (0 == (stick & 8) && objects[0].x > 0)
+			objects[0].x -= 2;
+		else if (0 == (stick & 16) && objects[0].x < SCREEN_WIDTH - 2)
+			objects[0].x += 2;
+		
+		vdp_spriteMoveTo(0, objects[0].x, objects[0].y);
+		
+		if (0 == (stick & 4) && ST_INACTIVE == objects[1].state)
+			{
+			// Fire bullet 
+			objects[1].state = ST_ACTIVE;
+			objects[1].x = objects[0].x;
+			objects[1].y = objects[0].y - 16;
+			vdp_spriteShow(1);
+			}
+
+		vdp_spriteRefresh();
 /*		
 		//flags = (UINT8)getsysvar16bit(sysvar_time);	//sysvar_vpd_pflags);
 		//t = getsysvar16bit(sysvar_time);
@@ -359,7 +471,7 @@ int main(int argc, char * argv[]) {
 */
 		}
 	
-//	vdp_cursorEnable();
+	vdp_cursorEnable();
 	
 //	vdp_mode(1);
  
