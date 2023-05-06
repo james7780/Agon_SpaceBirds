@@ -22,6 +22,7 @@ DEFINE __len_bss = length of BSS
  ".\init.obj", \
  ".\main.obj", \
  ".\vdp.obj", \
+ ".\vdp_audio.obj", \
  ".\mos-interface.obj", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\chelp.lib", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\crt.lib", \

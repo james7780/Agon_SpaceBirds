@@ -17,6 +17,8 @@
 <file filter-key="">sprites\explosions.h</file>
 <file filter-key="">sprites\playerShip.h</file>
 <file filter-key="">sprites\ufos.h</file>
+<file filter-key="">.\vdp_audio.c</file>
+<file filter-key="">.\vdp_audio.h</file>
 </files>
 
 <!-- configuration information -->

@@ -19,6 +19,7 @@
 #include <gpio.h>				// For joystick
 #include "mos-interface.h"
 #include "vdp.h"
+#include "vdp_audio.h"
 
 #include "sprites/ufos.h"			// for bullets
 #include "sprites/playerShip.h"
@@ -249,6 +250,7 @@ int main(int argc, char * argv[]) {
 	UINT16 i, j;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
+	UINT8 numActiveEnemies = 0;
 	
 	vdp_mode(2);
 	vdp_cursorDisable();
@@ -340,11 +342,13 @@ int main(int argc, char * argv[]) {
 		waitvblank();
 		
 		// Move enemies
+		numActiveEnemies = 0;
 		for (j = FIRSTENEMYID; j <= LASTENEMYID; j++)
 			{
 			if (ST_INACTIVE == objects[j].state)
 				continue;
 
+			numActiveEnemies++;
 			if (ST_MOVERIGHT == objects[j].state)
 				{
 				objects[j].x++;
@@ -379,6 +383,10 @@ int main(int argc, char * argv[]) {
 				//	vdp_spriteNextFrame(j);
 				}
 			}
+
+		// All enemies dead?
+		if (0 == numActiveEnemies)
+			break;
 			
 		// Update bullet
 		if (ST_ACTIVE == objects[1].state)
@@ -404,6 +412,7 @@ int main(int argc, char * argv[]) {
 						if (t < 16)
 							{
 							// Kill the enemy
+							audio_play(1, 240, 70, 666);
 							objects[j].state = ST_DYING;			// Start dying animation
 							objects[j].counter = 0;
 							vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
@@ -422,24 +431,18 @@ int main(int argc, char * argv[]) {
 		//vdp_plotPoint(rand255() * 4, rand255() * 4);
 
 			
-		//keycode = getsysvar8bit(sysvar_keycode);
-		//keycode = getkeycode();
 		keycode = getsysvar_keyascii();
+		//keycode = getsysvar_vkeydown();
 		//printf("%d\n\r", keycode);
 		if (27 == keycode)
 			break;
 
-/*		
-		if (8 == keycode)
-			vdp_spriteMoveBy(0, -2, 0);
-		else if (21 == keycode)
-			vdp_spriteMoveBy(0, 2, 0);
+		// Move via keyboard (janky)
+		if (8 == keycode && objects[0].x > 0)
+			objects[0].x -= 2;
+		else if (21 == keycode && objects[0].x < SCREEN_WIDTH - 2)
+			objects[0].x += 2;
 		
-		if (32 == keycode)
-			{
-			// Fire	
-			}
-*/			
 
 		// Read joystick and update player position and sprite
 		GETDR_PORTC(stick);
@@ -452,12 +455,14 @@ int main(int argc, char * argv[]) {
 		
 		vdp_spriteMoveTo(0, objects[0].x, objects[0].y);
 		
-		if (0 == (stick & 4) && ST_INACTIVE == objects[1].state)
+		if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[1].state)
 			{
 			// Fire bullet 
+			audio_play(0, 200, 1000, 300);
 			objects[1].state = ST_ACTIVE;
 			objects[1].x = objects[0].x;
 			objects[1].y = objects[0].y - 16;
+			vdp_spriteMoveTo(1, objects[1].x, objects[1].y);
 			vdp_spriteShow(1);
 			}
 
@@ -474,6 +479,11 @@ int main(int argc, char * argv[]) {
 	vdp_cursorEnable();
 	
 //	vdp_mode(1);
+
+	if (0 == numActiveEnemies)
+		printf("Congratulations! You defeated the defenseless Space Birds!\n\r");
+	else
+		printf("Fail! You did not defeat the Space Birds in time!\n\r");
  
 	return 0;
 }
