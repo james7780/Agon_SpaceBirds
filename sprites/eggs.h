@@ -1,8 +1,8 @@
 // Critters eggs data
 
 #define EGGS_FRAME_COUNT 7
-#define EGGS_FRAME_WIDTH 16
-#define EGGS_FRAME_HEIGHT 16
+#define EGGS_WIDTH 16
+#define EGGS_HEIGHT 16
 
 /* Piskel data for "New Piskel" */
 

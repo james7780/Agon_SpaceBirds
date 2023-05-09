@@ -25,7 +25,8 @@
 #include "sprites/playerShip.h"
 #include "sprites/explosions.h"
 #include "sprites/bird_16x12.h"
-#include "sprites/bird_32x24.h" 
+#include "sprites/bird_32x24_shaded.h"
+#include "sprites/eggs.h" 
 
 #define SCREEN_WIDTH	320
 #define SCREEN_HEIGHT	200
@@ -56,8 +57,16 @@ enum {
 	BID_EXPLOSION5,
 	BID_EXPLOSION6,
 	BID_EXPLOSION7,
+
+	BID_EGGS0,				// 16 to 22 - Eggs id's			
+	BID_EGGS1,
+	BID_EGGS2,
+	BID_EGGS3,
+	BID_EGGS4,
+	BID_EGGS5,
+	BID_EGGS6,
 	
-	BID_SBIRD0,				// 16 to 23 - Small bird id's			
+	BID_SBIRD0,				// 23 to 30 - Small bird id's			
 	BID_SBIRD1,				
 	BID_SBIRD2,				
 	BID_SBIRD3,				
@@ -66,13 +75,13 @@ enum {
 	BID_SBIRD6,				
 	BID_ENEMYBULLET,				
 
-	BID_BBIRD0,				// 24 to 31 - Big bird id's			
+	BID_BBIRD0,				// 31 to 37 - Big bird id's			
 	BID_BBIRD1,				
 	BID_BBIRD2,				
 	BID_BBIRD3,				
 	BID_BBIRD4,				
 	BID_BBIRD5,				
-	BID_BBIRD6			
+	BID_BBIRD6
 	
 };
 
@@ -80,6 +89,7 @@ enum {
 enum {
 	ST_INACTIVE = 0,
 	ST_ACTIVE,
+	ST_EGG,
 	ST_MOVELEFT,
 	ST_MOVERIGHT,
 	ST_DYING 
@@ -157,6 +167,15 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6]);
 	vdp_bitmapSendData(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7]);
 
+	// Eggs use bitmaps 16 to 22
+	vdp_bitmapSendData(BID_EGGS0, EGGS_WIDTH, EGGS_HEIGHT, eggsData[0]);
+	vdp_bitmapSendData(BID_EGGS1, EGGS_WIDTH, EGGS_HEIGHT, eggsData[1]);
+	vdp_bitmapSendData(BID_EGGS2, EGGS_WIDTH, EGGS_HEIGHT, eggsData[2]);
+	vdp_bitmapSendData(BID_EGGS3, EGGS_WIDTH, EGGS_HEIGHT, eggsData[3]);
+	vdp_bitmapSendData(BID_EGGS4, EGGS_WIDTH, EGGS_HEIGHT, eggsData[4]);
+	vdp_bitmapSendData(BID_EGGS5, EGGS_WIDTH, EGGS_HEIGHT, eggsData[5]);
+	vdp_bitmapSendData(BID_EGGS6, EGGS_WIDTH, EGGS_HEIGHT, eggsData[6]);
+
 	// Small enemy birds use bitmaps 16 to 23
 	vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
 	vdp_bitmapSendData(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1]);
@@ -213,10 +232,18 @@ void SetupSprites(UINT8 level)
 		{
 		objects[i].x = rand255();
 		objects[i].y = (i - FIRSTENEMYID) * 20;
-		objects[i].state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
-		objects[i].frame = i % 7;
+		objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+		objects[i].frame = 0; //(i % 7) + 7;
+		objects[i].counter = 0;
 		vdp_spriteSelect(i);
 		vdp_spriteClearFramesSelected();
+		vdp_spriteAddFrameSelected(BID_EGGS0);		// Frame 0 to 6 = eggs
+		vdp_spriteAddFrameSelected(BID_EGGS1);
+		vdp_spriteAddFrameSelected(BID_EGGS2);
+		vdp_spriteAddFrameSelected(BID_EGGS3);
+		vdp_spriteAddFrameSelected(BID_EGGS4);
+		vdp_spriteAddFrameSelected(BID_EGGS5);
+		vdp_spriteAddFrameSelected(BID_EGGS6);
 /* 		vdp_spriteAddFrame(i, BID_SBIRD0);
 		vdp_spriteAddFrame(i, BID_SBIRD1);
 		vdp_spriteAddFrame(i, BID_SBIRD2);
@@ -224,14 +251,14 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrame(i, BID_SBIRD4);
 		vdp_spriteAddFrame(i, BID_SBIRD5);
 		vdp_spriteAddFrame(i, BID_SBIRD6); */
-		vdp_spriteAddFrameSelected(BID_BBIRD0);
+		vdp_spriteAddFrameSelected(BID_BBIRD0);		// frame 7 to 13 = bird
 		vdp_spriteAddFrameSelected(BID_BBIRD1);
 		vdp_spriteAddFrameSelected(BID_BBIRD2);
 		vdp_spriteAddFrameSelected(BID_BBIRD3);
 		vdp_spriteAddFrameSelected(BID_BBIRD4);
 		vdp_spriteAddFrameSelected(BID_BBIRD5);
 		vdp_spriteAddFrameSelected(BID_BBIRD6);
-		vdp_spriteAddFrameSelected(BID_EXPLOSION0);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 14 to 21 = explosion
 		vdp_spriteAddFrameSelected(BID_EXPLOSION1);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION2);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION3);
@@ -243,6 +270,63 @@ void SetupSprites(UINT8 level)
 		vdp_spriteShowSelected();
 		}
 }
+
+
+// Update enemy according to it's current behaviour
+void UpdateEnemy(int i)
+{
+	OBJECT *pObject = &objects[i];
+
+	pObject->counter++;
+
+	if (ST_EGG == pObject->state)
+		{
+		if (pObject->counter == 224)
+			{
+			pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+			pObject->counter = 0;
+			}
+
+		pObject->frame = (UINT8)pObject->counter >> 5;
+		}
+	else if (ST_MOVERIGHT == pObject->state)
+		{
+		pObject->x++;
+		if (pObject->x == 319)
+			pObject->state = ST_MOVELEFT;
+
+		pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+		}
+	else if (ST_MOVELEFT == pObject->state)
+		{
+		pObject->x--;
+		if (pObject->x == 0)
+			pObject->state = ST_MOVERIGHT;
+
+		pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+		}
+	else if (ST_DYING == pObject->state)
+		{
+		pObject->frame = 14 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+
+		if (31 == pObject->counter)
+			{
+			pObject->counter = 0;
+			pObject->frame = 0;
+			pObject->state = ST_INACTIVE;
+			vdp_spriteHide(i);
+			}
+		}
+
+	// Update sprite on screen
+	if (pObject->state != ST_INACTIVE)
+		{
+		vdp_spriteMoveTo(i, pObject->x, pObject->y);
+		vdp_spriteSetFrame(i, pObject->frame);
+		}
+
+}
+
 
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
@@ -273,7 +357,7 @@ int main(int argc, char * argv[]) {
 	printf("Uploading bitmaps...\n\r");
 	UploadBitmaps();
 	
-	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
+//	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
 
 	// Set up sprites
 	// Note: BBCBASIC procedure:
@@ -349,39 +433,7 @@ int main(int argc, char * argv[]) {
 				continue;
 
 			numActiveEnemies++;
-			if (ST_MOVERIGHT == objects[j].state)
-				{
-				objects[j].x++;
-				if (objects[j].x == 319)
-					objects[j].state = ST_MOVELEFT;
-				}
-			else if (ST_MOVELEFT == objects[j].state)
-				{
-				objects[j].x--;
-				if (objects[j].x == 0)
-					objects[j].state = ST_MOVERIGHT;
-				}
-			
-			if (ST_DYING == objects[j].state)
-				{
-				objects[j].counter++;
-				if (0 == (objects[j].counter & 0x3))
-					vdp_spriteNextFrame(j);
-				if (31 == objects[j].counter)
-					{
-					objects[j].counter = 0;
-					objects[j].state = ST_INACTIVE;
-					vdp_spriteHide(j);
-					}
-				}
-			else
-				{
-				vdp_spriteMoveTo(j, objects[j].x, objects[j].y);
-				objects[j].frame++;
-				vdp_spriteSetFrame(j, (UINT8)(objects[j].frame / 8) % 7);
-				//if (0 == (i & 0x7))
-				//	vdp_spriteNextFrame(j);
-				}
+			UpdateEnemy(j);
 			}
 
 		// All enemies dead?
@@ -415,7 +467,8 @@ int main(int argc, char * argv[]) {
 							audio_play(1, 240, 70, 666);
 							objects[j].state = ST_DYING;			// Start dying animation
 							objects[j].counter = 0;
-							vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
+							objects[j].frame = 14;
+							//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 							// Also kill the bullet
 							objects[1].state = ST_INACTIVE;
 							vdp_spriteHide(1);
