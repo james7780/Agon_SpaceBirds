@@ -8,6 +8,11 @@
  * 2023-04-21 - Updated to use MOS 1.03
  */
  
+// VDP functions needed:
+// - Read state of any key on the keyboard
+// - Query sprite collisions (from fabGL)
+// - Better sound functions! (Different waveforms, noise, etc)
+
 // Ideas:
 // 1. Big bird splits into 2 when shot
 // 2. Dead birds drop from the sky, can kill you
@@ -85,6 +90,14 @@ enum {
 	
 };
 
+// Object types (type index)
+enum {
+	PLAYER = 0,
+	PLAYERBULLET,
+	BIRD,
+	BIGBIRD
+};
+
 // Object states
 enum {
 	ST_INACTIVE = 0,
@@ -92,7 +105,17 @@ enum {
 	ST_EGG,
 	ST_MOVELEFT,
 	ST_MOVERIGHT,
+	ST_MOVERANDOM,
 	ST_DYING 
+};
+
+// Direction bitmask
+enum {
+	DIRN_NONE = 0,
+	DIRN_LEFT = 1,
+	DIRN_RIGHT = 2,
+	DIRN_UP = 4,
+	DIRN_DOWN = 8
 };
 
 // Game object
@@ -101,15 +124,16 @@ typedef struct
 	UINT8 type;
 	UINT16 x;
 	UINT16 y;
-	UINT8 imageId;				// "base" image id
-	UINT8 frame;					// Current frame of animation
-	UINT8 state;					// Current state of this object
+	//UINT8 imageId;				// "base" image id
+	UINT8 frame;				// Current frame of animation
+	UINT8 state;				// Current state of this object
+	UINT8 dirn;					// Current direction of the object
 	UINT16 counter;				// Internal counter for object logic
 } OBJECT;
 
 OBJECT objects[MAX_SPRITES] = {
-	{ 0, 120, 50, BID_PLAYER0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 },
+	{ PLAYER, 120, 50, 0, 0, 0, 0 },
+	{ PLAYERBULLET, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 },
@@ -215,21 +239,22 @@ void SetupSprites(UINT8 level)
 	vdp_spriteAddFrameSelected(BID_PLAYER3);
 	vdp_spriteShowSelected();
 	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
-	objects[0].x = SCREEN_WIDTH / 2;
-	objects[0].y = SCREEN_HEIGHT - 20;
-	objects[0].state = ST_ACTIVE;		
+	objects[PLAYER].x = SCREEN_WIDTH / 2;
+	objects[PLAYER].y = SCREEN_HEIGHT - 30;		// Leave gap below so player can see enemies below
+	objects[PLAYER].state = ST_ACTIVE;		
 
 	// Set up bullet sprite
 	vdp_spriteSelect(1);
 	vdp_spriteAddFrameSelected(BID_PLAYERBULLET);
 	vdp_spriteHideSelected();
 	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT);		// Offscreen
-	objects[1].x = SCREEN_WIDTH / 2;
-	objects[1].y = SCREEN_HEIGHT;
-	objects[1].state = ST_INACTIVE;
+	objects[PLAYERBULLET].x = SCREEN_WIDTH / 2;
+	objects[PLAYERBULLET].y = SCREEN_HEIGHT;
+	objects[PLAYERBULLET].state = ST_INACTIVE;
 		
 	for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
 		{
+		objects[i].type = BIRD;
 		objects[i].x = rand255();
 		objects[i].y = (i - FIRSTENEMYID) * 20;
 		objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
@@ -271,52 +296,120 @@ void SetupSprites(UINT8 level)
 		}
 }
 
+// Change an object's direction
+UINT8 GetRandomDirection()
+{
+	UINT8 LR;
+	UINT8 UD;
+
+	// Choose random left/right
+	LR = rand255() & 0x03;
+	if (3 == LR)
+		LR = 0;
+	// Choose random up/down
+	UD = rand255() & 0x0C;
+	if (0x0C == UD)
+		UD = 0;
+
+	return (UD | LR);
+}
 
 // Update enemy according to it's current behaviour
 void UpdateEnemy(int i)
 {
+	UINT8 d = 0;
+	UINT16 f2;
+	UINT16 f4;
+
 	OBJECT *pObject = &objects[i];
 
 	pObject->counter++;
 
-	if (ST_EGG == pObject->state)
-		{
-		if (pObject->counter == 224)
-			{
-			pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
-			pObject->counter = 0;
-			}
+	f2 = (pObject->counter >> 1) & 1;		// every 2nd frame
+	f4 = (pObject->counter >> 2) & 1;		// every 4th frame
 
-		pObject->frame = (UINT8)pObject->counter >> 5;
-		}
-	else if (ST_MOVERIGHT == pObject->state)
+	switch (pObject->state)
 		{
-		pObject->x++;
-		if (pObject->x == 319)
-			pObject->state = ST_MOVELEFT;
+		case ST_EGG :
+			if (224 == pObject->counter)
+				{
+				//pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+				pObject->state = ST_MOVERANDOM;
+				pObject->dirn = GetRandomDirection();
+				pObject->counter = 0;
+				}
 
-		pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
-		}
-	else if (ST_MOVELEFT == pObject->state)
-		{
-		pObject->x--;
-		if (pObject->x == 0)
-			pObject->state = ST_MOVERIGHT;
+			pObject->frame = (UINT8)pObject->counter >> 5;
+			break;
+		case ST_MOVERIGHT :
+			pObject->x++;
+			if (pObject->x == 319)
+				pObject->state = ST_MOVELEFT;
 
-		pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
-		}
-	else if (ST_DYING == pObject->state)
-		{
-		pObject->frame = 14 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);\
+			break;
+		case ST_MOVELEFT :
+			pObject->x--;
+			if (pObject->x == 0)
+				pObject->state = ST_MOVERIGHT;
 
-		if (31 == pObject->counter)
-			{
-			pObject->counter = 0;
-			pObject->frame = 0;
-			pObject->state = ST_INACTIVE;
-			vdp_spriteHide(i);
-			}
-		}
+			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+			break;
+		case ST_MOVERANDOM :
+			// Move counter frames in the current object "direction"
+			// Dirn is 4-bit bitmask for left/right/up/down bits
+			d = pObject->dirn; 
+			if (d & DIRN_LEFT)
+				{
+				pObject->x--;
+				if (0 == pObject->x)
+					pObject->dirn = (d & 0x0C) | DIRN_RIGHT;		// Bounce off left edge of screen
+				}
+			else if (d & DIRN_RIGHT)
+				{
+				pObject->x++;
+				if (pObject->x == (SCREEN_WIDTH - 32))
+					pObject->dirn = (d & 0x0C) | DIRN_LEFT;		// Bounce off right edge of screen
+				}
+
+			// Only process y movement every 2nd frame (half-speed y movement)
+			if (f4)
+				{
+				if (d & DIRN_UP)
+					{
+					pObject->y--;
+					if (0 == pObject->y)
+						pObject->dirn = (d & 0x03) | DIRN_DOWN;	// Bounce bird off top of screen
+					}
+				else if (d & DIRN_DOWN)
+					{
+					pObject->y++;
+					if (SCREEN_HEIGHT == pObject->y)
+						pObject->y = 0;		// Put bird back at top of screen
+					}
+				}
+
+			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+
+			// Time to choose a new direction?
+			if (64 == pObject->counter)
+				{
+				pObject->dirn = GetRandomDirection();		// up/donw/left/right bitmask
+				pObject->counter = 0;
+				}
+			break;
+		case ST_DYING :
+			pObject->frame = 14 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+
+			if (31 == pObject->counter)
+				{
+				pObject->counter = 0;
+				pObject->frame = 0;
+				pObject->state = ST_INACTIVE;
+				vdp_spriteHide(i);
+				}
+			break;
+		}	// end switch
 
 	// Update sprite on screen
 	if (pObject->state != ST_INACTIVE)
@@ -441,13 +534,13 @@ int main(int argc, char * argv[]) {
 			break;
 			
 		// Update bullet
-		if (ST_ACTIVE == objects[1].state)
+		if (ST_ACTIVE == objects[PLAYERBULLET].state)
 			{
-			vdp_spriteMoveTo(1, objects[1].x, objects[1].y);
-			objects[1].y -= 4;
-			if (objects[1].y < 4)
+			vdp_spriteMoveTo(1, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
+			objects[PLAYERBULLET].y -= 4;
+			if (objects[PLAYERBULLET].y < 4)
 				{
-				objects[1].state = ST_INACTIVE;
+				objects[PLAYERBULLET].state = ST_INACTIVE;
 				vdp_spriteHide(1);
 				}
 			else
@@ -458,9 +551,9 @@ int main(int argc, char * argv[]) {
 					if (ST_INACTIVE == objects[j].state || ST_DYING == objects[j].state)
 						continue;
 
-					if (abs(objects[j].x - objects[1].x) < 10)
+					if (abs((objects[j].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12)
 						{
-						t = objects[1].y - objects[j].y;			// UINT16
+						t = objects[PLAYERBULLET].y - objects[j].y;			// UINT16
 						if (t < 16)
 							{
 							// Kill the enemy
@@ -470,7 +563,7 @@ int main(int argc, char * argv[]) {
 							objects[j].frame = 14;
 							//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 							// Also kill the bullet
-							objects[1].state = ST_INACTIVE;
+							objects[PLAYERBULLET].state = ST_INACTIVE;
 							vdp_spriteHide(1);
 							}
 
@@ -478,11 +571,16 @@ int main(int argc, char * argv[]) {
 					}
 				}
 			}
-			
-		//vdp_scroll(0, 1, 1);
-		//vdp_plotColour(rand255());
-		//vdp_plotPoint(rand255() * 4, rand255() * 4);
 
+/*
+		// To slow (flickers)
+		if (i & 0x1)
+			{
+			vdp_scroll(0, 2, 1);
+			vdp_plotColour(rand255());
+			vdp_plotPoint(rand255() * 5, 512 + rand255());
+			}
+ */
 			
 		keycode = getsysvar_keyascii();
 		//keycode = getsysvar_vkeydown();
@@ -491,31 +589,31 @@ int main(int argc, char * argv[]) {
 			break;
 
 		// Move via keyboard (janky)
-		if (8 == keycode && objects[0].x > 0)
-			objects[0].x -= 2;
-		else if (21 == keycode && objects[0].x < SCREEN_WIDTH - 2)
-			objects[0].x += 2;
+		if (8 == keycode && objects[PLAYER].x > 0)
+			objects[PLAYER].x -= 2;
+		else if (21 == keycode && objects[PLAYER].x < SCREEN_WIDTH - 2)
+			objects[PLAYER].x += 2;
 		
 
 		// Read joystick and update player position and sprite
 		GETDR_PORTC(stick);
 		//printf("%d- ", stick);
 		//stick = 255;
-		if (0 == (stick & 8) && objects[0].x > 0)
-			objects[0].x -= 2;
-		else if (0 == (stick & 16) && objects[0].x < SCREEN_WIDTH - 2)
-			objects[0].x += 2;
+		if (0 == (stick & 8) && objects[PLAYER].x > 0)
+			objects[PLAYER].x -= 2;
+		else if (0 == (stick & 16) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+			objects[PLAYER].x += 2;
 		
-		vdp_spriteMoveTo(0, objects[0].x, objects[0].y);
+		vdp_spriteMoveTo(0, objects[PLAYER].x, objects[PLAYER].y);
 		
-		if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[1].state)
+		if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
 			{
 			// Fire bullet 
 			audio_play(0, 200, 1000, 300);
-			objects[1].state = ST_ACTIVE;
-			objects[1].x = objects[0].x;
-			objects[1].y = objects[0].y - 16;
-			vdp_spriteMoveTo(1, objects[1].x, objects[1].y);
+			objects[PLAYERBULLET].state = ST_ACTIVE;
+			objects[PLAYERBULLET].x = objects[PLAYER].x;
+			objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
+			vdp_spriteMoveTo(1, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
 			vdp_spriteShow(1);
 			}
 

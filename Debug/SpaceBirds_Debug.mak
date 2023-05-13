@@ -46,19 +46,19 @@ WEBTOC = @"$(BIN)\mkwebpage"
 
 CFLAGS =  \
 -define:_DEBUG -define:_EZ80F92 -define:_EZ80ACCLAIM! -genprintf  \
--keepasm -keeplst -NOlist -NOlistinc -NOmodsect -optsize -promote  \
--NOreduceopt  \
+-NOkeepasm -NOkeeplst -NOlist -NOlistinc -NOmodsect -optsize  \
+-promote -NOreduceopt  \
 -stdinc:"\"..;..\..\include\std;..\..\include\zilog\""  \
 -usrinc:"\"..;\"" -NOmultithread -NOpadbranch -debug -cpu:eZ80F92  \
 -asmsw:"   \
 	-define:_EZ80ACCLAIM!=1  \
-	-include:\"..;..\..\include\std;..\..\include\zilog\" -list  \
+	-include:\"..;..\..\include\std;..\..\include\zilog\" -NOlist  \
 	-NOlistmac -pagelen:0 -pagewidth:80 -quiet -sdiopt -warn -debug  \
 	-NOigcase -cpu:eZ80F92"
 
 ASFLAGS =  \
 -define:_EZ80ACCLAIM!=1  \
--include:"\"..;..\..\include\std;..\..\include\zilog\"" -list  \
+-include:"\"..;..\..\include\std;..\..\include\zilog\"" -NOlist  \
 -NOlistmac -name -pagelen:0 -pagewidth:80 -quiet -sdiopt -warn  \
 -debug -NOigcase -cpu:eZ80F92
 
@@ -112,16 +112,16 @@ clean:
             $(RM) "$(WORKDIR)\vdp.lst"
 	@if exist "$(WORKDIR)\vdp.src"  \
             $(RM) "$(WORKDIR)\vdp.src"
+	@if exist "$(WORKDIR)\vdp_audio.obj"  \
+            $(RM) "$(WORKDIR)\vdp_audio.obj"
+	@if exist "$(WORKDIR)\vdp_audio.lis"  \
+            $(RM) "$(WORKDIR)\vdp_audio.lis"
+	@if exist "$(WORKDIR)\vdp_audio.lst"  \
+            $(RM) "$(WORKDIR)\vdp_audio.lst"
+	@if exist "$(WORKDIR)\vdp_audio.src"  \
+            $(RM) "$(WORKDIR)\vdp_audio.src"
 
 relist: 
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
-            C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\init.asm
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
-            C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\main.src
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
-            C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\mos-interface.asm
-	$(AS) $(ASFLAGS) -relist:"C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\SpaceBirds.map" \
-            C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\Agon_SpaceBirds\Debug\vdp.src
 
 # pre-4.11.0 compatibility
 rebuildall: buildall 
@@ -132,7 +132,8 @@ OBJS =  \
             $(WORKDIR_ESCSPACE)\init.obj  \
             $(WORKDIR_ESCSPACE)\main.obj  \
             $(WORKDIR_ESCSPACE)\mos-interface.obj  \
-            $(WORKDIR_ESCSPACE)\vdp.obj
+            $(WORKDIR_ESCSPACE)\vdp.obj  \
+            $(WORKDIR_ESCSPACE)\vdp_audio.obj
 
 SpaceBirds: $(OBJS)
 	 $(LD) $(LDFLAGS)
@@ -145,12 +146,14 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\main.c  \
             $(PRJDIR_ESCSPACE)\mos-interface.h  \
             $(PRJDIR_ESCSPACE)\sprites\bird_16x12.h  \
-            $(PRJDIR_ESCSPACE)\sprites\bird_32x24.h  \
+            $(PRJDIR_ESCSPACE)\sprites\bird_32x24_shaded.h  \
+            $(PRJDIR_ESCSPACE)\sprites\eggs.h  \
             $(PRJDIR_ESCSPACE)\sprites\explosions.h  \
             $(PRJDIR_ESCSPACE)\sprites\playerShip.h  \
             $(PRJDIR_ESCSPACE)\sprites\ufos.h  \
             $(PRJDIR_ESCSPACE)\stdint.h  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
+            $(PRJDIR_ESCSPACE)\vdp_audio.h  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
             $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
@@ -181,4 +184,11 @@ $(WORKDIR_ESCSPACE)\vdp.obj :  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
             $(INCLUDE_ESCSPACE)\zilog\defines.h
 	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp.c"
+
+$(WORKDIR_ESCSPACE)\vdp_audio.obj :  \
+            $(PRJDIR_ESCSPACE)\vdp_audio.c  \
+            $(PRJDIR_ESCSPACE)\mos-interface.h  \
+            $(PRJDIR_ESCSPACE)\stdint.h  \
+            $(INCLUDE_ESCSPACE)\zilog\defines.h
+	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp_audio.c"
 
