@@ -28,6 +28,7 @@ DEFINE __len_bss = length of BSS
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\crtD.lib", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\crtSD.lib", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\nokernelD.lib", \
+ "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\std\fplibD.lib", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\zilog\gpioD.lib", \
  "C:\ZiLOG\ZDSII_eZ80Acclaim!_5.3.4\lib\zilog\zsldevinitdummy.obj"
-
+ 

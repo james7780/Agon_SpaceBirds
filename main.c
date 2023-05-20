@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <math.h>
 #include <gpio.h>				// For joystick
 #include "mos-interface.h"
 #include "vdp.h"
@@ -29,19 +30,23 @@
 #include "sprites/ufos.h"			// for bullets
 #include "sprites/playerShip.h"
 #include "sprites/explosions.h"
+#include "sprites/eggs.h"
 #include "sprites/bird_16x12.h"
 #include "sprites/bird_32x24_shaded.h"
-#include "sprites/eggs.h" 
+#include "sprites/title_16x16.h"
+
 
 #define SCREEN_WIDTH	320
 #define SCREEN_HEIGHT	200
 
 #define MAX_SPRITES		32
 #define BITMAP_WIDTH		16
-#define BITMAP_HEIGHT	16	
+#define BITMAP_HEIGHT		16	
 
-#define FIRSTENEMYID	2				// index of the first enemy in the object array
-#define LASTENEMYID	9				// index of the last enemy in the object array
+#define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
+#define LASTENEMYBULLETID	7
+#define FIRSTENEMYID		8				// index of the first enemy in the object array
+#define LASTENEMYID		15				// index of the last enemy in the object array
 
 // Bitmaps ids
 enum {
@@ -86,7 +91,17 @@ enum {
 	BID_BBIRD3,				
 	BID_BBIRD4,				
 	BID_BBIRD5,				
-	BID_BBIRD6
+	BID_BBIRD6,
+
+	BID_TITLE0,				// 38 to 46 - Title character sprites
+	BID_TITLE1,
+	BID_TITLE2,
+	BID_TITLE3,
+	BID_TITLE4,
+	BID_TITLE5,
+	BID_TITLE6,
+	BID_TITLE7,
+	BID_TITLE8
 	
 };
 
@@ -94,6 +109,8 @@ enum {
 enum {
 	PLAYER = 0,
 	PLAYERBULLET,
+	ENEMYBULLET,
+	EGG,
 	BIRD,
 	BIGBIRD
 };
@@ -165,7 +182,9 @@ OBJECT objects[MAX_SPRITES] = {
 	{ 0, 0, 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 0 }
 };
-	
+
+// Global Variables (oooh!)
+int bombDropChance = 40;				// 40 / 65536 chance
 
 UINT8 rand255()
 {
@@ -200,7 +219,7 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_EGGS5, EGGS_WIDTH, EGGS_HEIGHT, eggsData[5]);
 	vdp_bitmapSendData(BID_EGGS6, EGGS_WIDTH, EGGS_HEIGHT, eggsData[6]);
 
-	// Small enemy birds use bitmaps 16 to 23
+	// Small enemy birds use bitmaps 23 to 29
 	vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
 	vdp_bitmapSendData(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1]);
 	vdp_bitmapSendData(BID_SBIRD2, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[2]);
@@ -208,9 +227,11 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_SBIRD4, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[4]);
 	vdp_bitmapSendData(BID_SBIRD5, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[5]);
 	vdp_bitmapSendData(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6]);
+
+	// Enemy bullet at bitmap 30
 	vdp_bitmapSendData(BID_ENEMYBULLET, 16, 16, enemyBulletData);
 	
-	// Big enemy birds use bitmaps 24 to 31
+	// Big enemy birds use bitmaps 31 to 37
 	vdp_bitmapSendData(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0]);
 	vdp_bitmapSendData(BID_BBIRD1, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[1]);
 	vdp_bitmapSendData(BID_BBIRD2, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[2]);
@@ -219,12 +240,76 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5]);
 	vdp_bitmapSendData(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6]);
 
+	// Title sprite characters use bitmaps 38 to 46
+	vdp_bitmapSendData(BID_TITLE0, TITLE_WIDTH, TITLE_HEIGHT, titleData[0]);
+	vdp_bitmapSendData(BID_TITLE1, TITLE_WIDTH, TITLE_HEIGHT, titleData[1]);
+	vdp_bitmapSendData(BID_TITLE2, TITLE_WIDTH, TITLE_HEIGHT, titleData[2]);
+	vdp_bitmapSendData(BID_TITLE3, TITLE_WIDTH, TITLE_HEIGHT, titleData[3]);
+	vdp_bitmapSendData(BID_TITLE4, TITLE_WIDTH, TITLE_HEIGHT, titleData[4]);
+	vdp_bitmapSendData(BID_TITLE5, TITLE_WIDTH, TITLE_HEIGHT, titleData[5]);
+	vdp_bitmapSendData(BID_TITLE6, TITLE_WIDTH, TITLE_HEIGHT, titleData[6]);
+	vdp_bitmapSendData(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7]);
+	vdp_bitmapSendData(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8]);
+
+}
+
+// Show the title sequence
+void DoTitle()
+{
+	UINT8 i;
+	UINT8 keycode;
+	float r = 0.0f;
+	float dy;
+
+	// Set up sprites
+	for (i = 0; i < MAX_SPRITES; i++)
+		{
+		vdp_spriteHide(i);
+		}
+
+	vdp_cls();
+
+	for (i = 0; i < TITLE_FRAME_COUNT; i++)
+		{
+		objects[i].type = 0;
+		objects[i].x = i * 16 + 68;
+		objects[i].y = SCREEN_HEIGHT / 3;
+		vdp_spriteSelect(i);
+		vdp_spriteClearFramesSelected();
+		vdp_spriteAddFrameSelected(BID_TITLE0 + i);
+		vdp_spriteShowSelected();
+		vdp_spriteMoveToSelected(objects[i].x, objects[i].y);
+		}
+
+	vdp_spriteActivateTotal(9);
+	vdp_spriteRefresh();
+
+	vdp_cursorGoto(10, 20);
+	printf("By Jum Hig 2023");
+
+	// Wait for keypress
+	while (1)
+		{
+		waitvblank();
+		r += 0.03;
+		for (i = 0; i < TITLE_FRAME_COUNT; i++)
+			{
+			dy = sin(r + ((float)i * 0.1f)) * 24.0f;
+			vdp_spriteMoveTo(i, objects[i].x, objects[i].y + (int)dy);
+			}
+
+		vdp_spriteRefresh();
+		keycode = getsysvar_keyascii();
+		if (32 == keycode)
+			break;
+		}
 }
 
 // Setup the sprites according to the level
 void SetupSprites(UINT8 level)
 {
 	UINT8 i;
+
 	for (i = 1; i < MAX_SPRITES; i++)
 		{
 		vdp_spriteHide(i);
@@ -239,22 +324,42 @@ void SetupSprites(UINT8 level)
 	vdp_spriteAddFrameSelected(BID_PLAYER3);
 	vdp_spriteShowSelected();
 	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 20);
+	objects[PLAYER].type = PLAYER;
 	objects[PLAYER].x = SCREEN_WIDTH / 2;
 	objects[PLAYER].y = SCREEN_HEIGHT - 30;		// Leave gap below so player can see enemies below
 	objects[PLAYER].state = ST_ACTIVE;		
 
-	// Set up bullet sprite
+	// Set up player bullet sprite
 	vdp_spriteSelect(1);
+	vdp_spriteClearFramesSelected();
 	vdp_spriteAddFrameSelected(BID_PLAYERBULLET);
 	vdp_spriteHideSelected();
 	vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT);		// Offscreen
+	objects[PLAYERBULLET].type = PLAYERBULLET;
 	objects[PLAYERBULLET].x = SCREEN_WIDTH / 2;
 	objects[PLAYERBULLET].y = SCREEN_HEIGHT;
 	objects[PLAYERBULLET].state = ST_INACTIVE;
-		
+
+	// Set up enemy bullet sprites
+	for (i = FIRSTENEMYBULLETID; i <= LASTENEMYBULLETID; i++)
+		{
+		objects[i].type = ENEMYBULLET;
+		objects[i].x = 0;
+		objects[i].y = SCREEN_HEIGHT;
+		objects[i].state = ST_INACTIVE;
+		objects[i].frame = 0; 
+		objects[i].counter = 0;
+		vdp_spriteSelect(i);
+		vdp_spriteClearFramesSelected();
+		vdp_spriteAddFrameSelected(BID_ENEMYBULLET);
+		vdp_spriteHideSelected();
+		vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT);		// Offscreen
+		}
+
+	// Set up enemy bird sprites
 	for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
 		{
-		objects[i].type = BIRD;
+		objects[i].type = EGG;
 		objects[i].x = rand255();
 		objects[i].y = (i - FIRSTENEMYID) * 20;
 		objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
@@ -269,21 +374,21 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrameSelected(BID_EGGS4);
 		vdp_spriteAddFrameSelected(BID_EGGS5);
 		vdp_spriteAddFrameSelected(BID_EGGS6);
-/* 		vdp_spriteAddFrame(i, BID_SBIRD0);
-		vdp_spriteAddFrame(i, BID_SBIRD1);
-		vdp_spriteAddFrame(i, BID_SBIRD2);
-		vdp_spriteAddFrame(i, BID_SBIRD3);
-		vdp_spriteAddFrame(i, BID_SBIRD4);
-		vdp_spriteAddFrame(i, BID_SBIRD5);
-		vdp_spriteAddFrame(i, BID_SBIRD6); */
-		vdp_spriteAddFrameSelected(BID_BBIRD0);		// frame 7 to 13 = bird
+ 		vdp_spriteAddFrameSelected(BID_SBIRD0);		// frame 7 to 13 = small bird
+		vdp_spriteAddFrameSelected(BID_SBIRD1);
+		vdp_spriteAddFrameSelected(BID_SBIRD2);
+		vdp_spriteAddFrameSelected(BID_SBIRD3);
+		vdp_spriteAddFrameSelected(BID_SBIRD4);
+		vdp_spriteAddFrameSelected(BID_SBIRD5);
+		vdp_spriteAddFrameSelected(BID_SBIRD6);
+		vdp_spriteAddFrameSelected(BID_BBIRD0);		// frame 14 to 21 = big bird
 		vdp_spriteAddFrameSelected(BID_BBIRD1);
 		vdp_spriteAddFrameSelected(BID_BBIRD2);
 		vdp_spriteAddFrameSelected(BID_BBIRD3);
 		vdp_spriteAddFrameSelected(BID_BBIRD4);
 		vdp_spriteAddFrameSelected(BID_BBIRD5);
 		vdp_spriteAddFrameSelected(BID_BBIRD6);
-		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 14 to 21 = explosion
+		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 22 to 29 = explosion
 		vdp_spriteAddFrameSelected(BID_EXPLOSION1);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION2);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION3);
@@ -314,14 +419,97 @@ UINT8 GetRandomDirection()
 	return (UD | LR);
 }
 
-// Update enemy according to it's current behaviour
-void UpdateEnemy(int i)
+// Drop a new enemy bullet
+void DropEnemyBullet(OBJECT *pParentObject)
+{
+	UINT8 n;
+	OBJECT *pBulletObject;
+
+	if (!pParentObject)
+		return;
+
+	// Find first inactive enemy bullet object/sprite
+	for (n = FIRSTENEMYBULLETID; n <= LASTENEMYBULLETID; n++)
+		{
+		pBulletObject = &objects[n];
+		if (ST_INACTIVE == pBulletObject->state)
+			{
+			// Set up new enemy bullet 
+			audio_play(0, 200, 1500, 300);
+			pBulletObject->state = ST_ACTIVE;
+			pBulletObject->x = pParentObject->x;
+			pBulletObject->y = pParentObject->y + 16;
+			vdp_spriteMoveTo(n, pBulletObject->x, pBulletObject->y);
+			vdp_spriteShow(n);
+			break;				// don't fire multiple bullets!
+			}
+		}
+
+}
+
+// Update enemy bullet
+void UpdateEnemyBullet(UINT8 n, UINT8 level)
 {
 	UINT8 d = 0;
 	UINT16 f2;
 	UINT16 f4;
 
-	OBJECT *pObject = &objects[i];
+	OBJECT *pObject = &objects[n];
+
+	if (ST_ACTIVE == pObject->state)
+		{
+		pObject->counter++;
+
+		// Hit player?
+		if (pObject->y > objects[PLAYER].y)
+			{
+			if (abs(pObject->x - objects[PLAYER].x) < 12)
+				{
+				// Kill the player
+				audio_play(1, 240, 70, 666);
+/*				objects[n].state = ST_DYING;			// Start dying animation
+				objects[n].counter = 0;
+				objects[n].frame = 14;
+				//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
+				// Also kill the bullet
+				objects[PLAYERBULLET].state = ST_INACTIVE;
+				vdp_spriteHide(1);
+*/
+				pObject->y = SCREEN_HEIGHT;			// kill this bullet below
+				}
+			}
+
+		if (level < 2)
+			pObject->y += 1;
+		else
+			pObject->y += 2;
+
+		if (pObject->y >= SCREEN_HEIGHT)
+			{
+			pObject->counter = 0;
+			pObject->frame = 0;
+			pObject->state = ST_INACTIVE;
+			vdp_spriteHide(n);
+			}
+		}
+
+	// Update sprite on screen
+	if (pObject->state != ST_INACTIVE)
+		{
+		vdp_spriteMoveTo(n, pObject->x, pObject->y);
+		vdp_spriteSetFrame(n, pObject->frame);
+		}
+
+}
+
+// Update enemy according to it's current behaviour
+void UpdateEnemy(UINT8 n, UINT8 level)
+{
+	UINT8 d = 0;
+	UINT16 f2;
+	UINT16 f4;
+
+	OBJECT *pObject = &objects[n];
 
 	pObject->counter++;
 
@@ -334,6 +522,7 @@ void UpdateEnemy(int i)
 			if (224 == pObject->counter)
 				{
 				//pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+				pObject->type = BIGBIRD;
 				pObject->state = ST_MOVERANDOM;
 				pObject->dirn = GetRandomDirection();
 				pObject->counter = 0;
@@ -389,7 +578,10 @@ void UpdateEnemy(int i)
 					}
 				}
 
-			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+			if (BIGBIRD == pObject->type)
+				pObject->frame = 14 + ((UINT8)(pObject->counter / 8) % 7);
+			else
+				pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
 
 			// Time to choose a new direction?
 			if (64 == pObject->counter)
@@ -397,6 +589,11 @@ void UpdateEnemy(int i)
 				pObject->dirn = GetRandomDirection();		// up/donw/left/right bitmask
 				pObject->counter = 0;
 				}
+
+			// Time to fire a bullet / drop a bomb?
+			if (rand() < bombDropChance)
+				DropEnemyBullet(pObject);
+
 			break;
 		case ST_DYING :
 			pObject->frame = 14 + ((UINT8)pObject->counter >> 2);			// Explosion frames
@@ -406,7 +603,7 @@ void UpdateEnemy(int i)
 				pObject->counter = 0;
 				pObject->frame = 0;
 				pObject->state = ST_INACTIVE;
-				vdp_spriteHide(i);
+				vdp_spriteHide(n);
 				}
 			break;
 		}	// end switch
@@ -414,8 +611,8 @@ void UpdateEnemy(int i)
 	// Update sprite on screen
 	if (pObject->state != ST_INACTIVE)
 		{
-		vdp_spriteMoveTo(i, pObject->x, pObject->y);
-		vdp_spriteSetFrame(i, pObject->frame);
+		vdp_spriteMoveTo(n, pObject->x, pObject->y);
+		vdp_spriteSetFrame(n, pObject->frame);
 		}
 
 }
@@ -424,10 +621,12 @@ void UpdateEnemy(int i)
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
 int main(int argc, char * argv[]) {
-	UINT16 i, j;
+	UINT16 i;
+	UINT8 n;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
 	UINT8 numActiveEnemies = 0;
+	UINT8 level = 0;
 	
 	vdp_mode(2);
 	vdp_cursorDisable();
@@ -449,6 +648,8 @@ int main(int argc, char * argv[]) {
 	// Bitmaps 0 to 8 are for player + player bullet
 	printf("Uploading bitmaps...\n\r");
 	UploadBitmaps();
+
+	DoTitle();
 	
 //	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
 
@@ -503,30 +704,37 @@ int main(int argc, char * argv[]) {
 */
 
 	printf("Setting up sprites...\n\r");
-	SetupSprites(0);
+	SetupSprites(level);
 
 //	getch();
 	
 	vdp_cls();
 	
 
-	vdp_spriteActivateTotal(10);
+	vdp_spriteActivateTotal(16);
 	vdp_spriteRefresh();
 //	getch();
 		
-	for (i = 0; i < 1000; i++)
+	for (i = 0; i < 1400; i++)
 		{
 		waitvblank();
+
+		// Move enemy bullets
+		for (n = FIRSTENEMYBULLETID; n <= LASTENEMYBULLETID; n++)
+			{
+			if (objects[n].state != ST_INACTIVE)
+				UpdateEnemyBullet(n, level);
+			}
 		
 		// Move enemies
 		numActiveEnemies = 0;
-		for (j = FIRSTENEMYID; j <= LASTENEMYID; j++)
+		for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
 			{
-			if (ST_INACTIVE == objects[j].state)
-				continue;
-
-			numActiveEnemies++;
-			UpdateEnemy(j);
+			if (objects[n].state != ST_INACTIVE)
+				{
+				numActiveEnemies++;
+				UpdateEnemy(n, level);
+				}
 			}
 
 		// All enemies dead?
@@ -546,21 +754,21 @@ int main(int argc, char * argv[]) {
 			else
 				{
 				// Check bullet against birds (collision)
-				for (j = FIRSTENEMYID; j <= LASTENEMYID; j++)
+				for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
 					{
-					if (ST_INACTIVE == objects[j].state || ST_DYING == objects[j].state)
+					if (ST_INACTIVE == objects[n].state || ST_DYING == objects[n].state)
 						continue;
 
-					if (abs((objects[j].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12)
+					if (abs((objects[n].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12)
 						{
-						t = objects[PLAYERBULLET].y - objects[j].y;			// UINT16
+						t = objects[PLAYERBULLET].y - objects[n].y;			// UINT16
 						if (t < 16)
 							{
 							// Kill the enemy
 							audio_play(1, 240, 70, 666);
-							objects[j].state = ST_DYING;			// Start dying animation
-							objects[j].counter = 0;
-							objects[j].frame = 14;
+							objects[n].state = ST_DYING;			// Start dying animation
+							objects[n].counter = 0;
+							objects[n].frame = 14;
 							//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 							// Also kill the bullet
 							objects[PLAYERBULLET].state = ST_INACTIVE;
