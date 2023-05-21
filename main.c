@@ -184,7 +184,7 @@ OBJECT objects[MAX_SPRITES] = {
 };
 
 // Global Variables (oooh!)
-int bombDropChance = 40;				// 40 / 65536 chance
+int bombDropChance = 80;				// 40 / 65536 chance
 
 UINT8 rand255()
 {
@@ -256,8 +256,7 @@ void UploadBitmaps()
 // Show the title sequence
 void DoTitle()
 {
-	UINT8 i;
-	UINT8 keycode;
+	UINT8 i, keycode, startCount;
 	float r = 0.0f;
 	float dy;
 
@@ -286,9 +285,12 @@ void DoTitle()
 
 	vdp_cursorGoto(10, 20);
 	printf("By Jum Hig 2023");
+	vdp_cursorGoto(8, 22);
+	printf("Press SPACE to start");
 
 	// Wait for keypress
-	while (1)
+	startCount = 255;
+	while (startCount > 0)
 		{
 		waitvblank();
 		r += 0.03;
@@ -299,10 +301,23 @@ void DoTitle()
 			}
 
 		vdp_spriteRefresh();
+
 		keycode = getsysvar_keyascii();
-		if (32 == keycode)
-			break;
+		if (32 == keycode && 255 == startCount)
+			startCount = SCREEN_HEIGHT;
+
+		// Scroll screen up after we have pressed start
+		if (startCount < 255)
+			{
+			vdp_scroll(0, 3, 1);
+			vdp_plotColour(rand255());
+			vdp_plotPoint(rand255() * 5, 0);
+			for (i = 0; i < TITLE_FRAME_COUNT; i++)
+				objects[i].y--;
+			startCount--;
+			}
 		}
+
 }
 
 // Setup the sprites according to the level
@@ -467,9 +482,9 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 				{
 				// Kill the player
 				audio_play(1, 240, 70, 666);
-/*				objects[n].state = ST_DYING;			// Start dying animation
-				objects[n].counter = 0;
-				objects[n].frame = 14;
+				objects[PLAYER].state = ST_DYING;			// Start dying animation
+				objects[PLAYER].counter = 0;
+/*				objects[n].frame = 14;
 				//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 				// Also kill the bullet
 				objects[PLAYERBULLET].state = ST_INACTIVE;
@@ -596,7 +611,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 
 			break;
 		case ST_DYING :
-			pObject->frame = 14 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+			pObject->frame = 22 + ((UINT8)pObject->counter >> 2);			// Explosion frames
 
 			if (31 == pObject->counter)
 				{
@@ -703,19 +718,16 @@ int main(int argc, char * argv[]) {
 	vdp_spriteActivateTotal(3);
 */
 
-	printf("Setting up sprites...\n\r");
+	//printf("Setting up sprites...\n\r");
 	SetupSprites(level);
 
 //	getch();
 	
-	vdp_cls();
-	
-
 	vdp_spriteActivateTotal(16);
 	vdp_spriteRefresh();
 //	getch();
 		
-	for (i = 0; i < 1400; i++)
+	for (i = 0; i < 1100; i++)
 		{
 		waitvblank();
 
@@ -744,12 +756,12 @@ int main(int argc, char * argv[]) {
 		// Update bullet
 		if (ST_ACTIVE == objects[PLAYERBULLET].state)
 			{
-			vdp_spriteMoveTo(1, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
+			vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
 			objects[PLAYERBULLET].y -= 4;
 			if (objects[PLAYERBULLET].y < 4)
 				{
 				objects[PLAYERBULLET].state = ST_INACTIVE;
-				vdp_spriteHide(1);
+				vdp_spriteHide(PLAYERBULLET);
 				}
 			else
 				{
@@ -768,11 +780,11 @@ int main(int argc, char * argv[]) {
 							audio_play(1, 240, 70, 666);
 							objects[n].state = ST_DYING;			// Start dying animation
 							objects[n].counter = 0;
-							objects[n].frame = 14;
+							objects[n].frame = 22;
 							//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 							// Also kill the bullet
 							objects[PLAYERBULLET].state = ST_INACTIVE;
-							vdp_spriteHide(1);
+							vdp_spriteHide(PLAYERBULLET);
 							}
 
 						}
@@ -781,7 +793,7 @@ int main(int argc, char * argv[]) {
 			}
 
 /*
-		// To slow (flickers)
+		// Too slow (flickers)
 		if (i & 0x1)
 			{
 			vdp_scroll(0, 2, 1);
@@ -796,33 +808,45 @@ int main(int argc, char * argv[]) {
 		if (27 == keycode)
 			break;
 
-		// Move via keyboard (janky)
-		if (8 == keycode && objects[PLAYER].x > 0)
-			objects[PLAYER].x -= 2;
-		else if (21 == keycode && objects[PLAYER].x < SCREEN_WIDTH - 2)
-			objects[PLAYER].x += 2;
-		
-
-		// Read joystick and update player position and sprite
-		GETDR_PORTC(stick);
-		//printf("%d- ", stick);
-		//stick = 255;
-		if (0 == (stick & 8) && objects[PLAYER].x > 0)
-			objects[PLAYER].x -= 2;
-		else if (0 == (stick & 16) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
-			objects[PLAYER].x += 2;
-		
-		vdp_spriteMoveTo(0, objects[PLAYER].x, objects[PLAYER].y);
-		
-		if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
+		// Move player (if alive)
+		if (ST_ACTIVE == objects[PLAYER].state)
 			{
-			// Fire bullet 
-			audio_play(0, 200, 1000, 300);
-			objects[PLAYERBULLET].state = ST_ACTIVE;
-			objects[PLAYERBULLET].x = objects[PLAYER].x;
-			objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
-			vdp_spriteMoveTo(1, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
-			vdp_spriteShow(1);
+			// Move via keyboard (janky)
+			if (8 == keycode && objects[PLAYER].x > 0)
+				objects[PLAYER].x -= 2;
+			else if (21 == keycode && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+				objects[PLAYER].x += 2;
+			
+
+			// Read joystick and update player position and sprite
+			GETDR_PORTC(stick);
+			//printf("%d- ", stick);
+			//stick = 255;
+			if (0 == (stick & 8) && objects[PLAYER].x > 0)
+				objects[PLAYER].x -= 2;
+			else if (0 == (stick & 16) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+				objects[PLAYER].x += 2;
+			
+			vdp_spriteMoveTo(PLAYER, objects[PLAYER].x, objects[PLAYER].y);
+			
+			if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
+				{
+				// Fire bullet 
+				audio_play(0, 200, 1000, 300);
+				objects[PLAYERBULLET].state = ST_ACTIVE;
+				objects[PLAYERBULLET].x = objects[PLAYER].x;
+				objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
+				vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
+				vdp_spriteShow(PLAYERBULLET);
+				}
+			}
+		else
+			{
+			// Player dying or dead
+			vdp_spriteSetFrame(PLAYER, objects[PLAYER].counter / 8);
+			objects[PLAYER].counter++;
+			if (32 == objects[PLAYER].counter)
+				break;	// End game
 			}
 
 		vdp_spriteRefresh();
@@ -839,10 +863,11 @@ int main(int argc, char * argv[]) {
 	
 //	vdp_mode(1);
 
+	vdp_cursorGoto(0, 22);
 	if (0 == numActiveEnemies)
-		printf("Congratulations! You defeated the defenseless Space Birds!\n\r");
+		printf("Congratulations!\n\rYou defeated the defenseless Space Birds!\n\r");
 	else
-		printf("Fail! You did not defeat the Space Birds in time!\n\r");
+		printf("Fail!\n\rYou did not defeat the Space Birds in time!\n\rTry again.\n\r");
  
 	return 0;
 }

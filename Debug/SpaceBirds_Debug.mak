@@ -150,6 +150,7 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\sprites\eggs.h  \
             $(PRJDIR_ESCSPACE)\sprites\explosions.h  \
             $(PRJDIR_ESCSPACE)\sprites\playerShip.h  \
+            $(PRJDIR_ESCSPACE)\sprites\title_16x16.h  \
             $(PRJDIR_ESCSPACE)\sprites\ufos.h  \
             $(PRJDIR_ESCSPACE)\stdint.h  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
@@ -157,6 +158,7 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
             $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
+            $(INCLUDE_ESCSPACE)\std\Math.h  \
             $(INCLUDE_ESCSPACE)\std\Stdio.h  \
             $(INCLUDE_ESCSPACE)\std\Stdlib.h  \
             $(INCLUDE_ESCSPACE)\zilog\cio.h  \
