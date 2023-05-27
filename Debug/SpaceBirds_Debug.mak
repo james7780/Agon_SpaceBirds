@@ -154,7 +154,6 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\sprites\ufos.h  \
             $(PRJDIR_ESCSPACE)\stdint.h  \
             $(PRJDIR_ESCSPACE)\vdp.h  \
-            $(PRJDIR_ESCSPACE)\vdp_audio.h  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
             $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
@@ -188,9 +187,6 @@ $(WORKDIR_ESCSPACE)\vdp.obj :  \
 	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp.c"
 
 $(WORKDIR_ESCSPACE)\vdp_audio.obj :  \
-            $(PRJDIR_ESCSPACE)\vdp_audio.c  \
-            $(PRJDIR_ESCSPACE)\mos-interface.h  \
-            $(PRJDIR_ESCSPACE)\stdint.h  \
-            $(INCLUDE_ESCSPACE)\zilog\defines.h
+            $(PRJDIR_ESCSPACE)\vdp_audio.c
 	 $(CC) $(CFLAGS) "$(PRJDIR)\vdp_audio.c"
 

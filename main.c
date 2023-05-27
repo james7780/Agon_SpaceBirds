@@ -15,8 +15,19 @@
 
 // Ideas:
 // 1. Big bird splits into 2 when shot
-// 2. Dead birds drop from the sky, can kill you
+// 2. Dead birds drop from the sky (with flames on wings), can kill you 
 // 3. If you clip a bird's wing, it drops down with erratic side movement
+
+// Levels (affects SetupSprites() and UpdateEnemies()):
+// 1. Eggs to smal birds
+// 2. Eggs to small birds to buig birds
+// 3. Eggs to big birds, split into 2 if shot
+// 4. Boss?
+// Levels repeat like this (1-4 above), but:
+//    - number of enemies increases
+//    - Enemy bullet frequency increases
+//    - Enemy bullet speed increases
+//    - Enemies start shooting bullets at an angle
 
 #include <stdio.h>
 #include <ctype.h>
@@ -46,7 +57,8 @@
 #define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
 #define LASTENEMYBULLETID	7
 #define FIRSTENEMYID		8				// index of the first enemy in the object array
-#define LASTENEMYID		15				// index of the last enemy in the object array
+#define MAX_ENEMIES		10
+#define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES + 1)	// index of the last enemy in the object array
 
 // Bitmaps ids
 enum {
@@ -320,10 +332,23 @@ void DoTitle()
 
 }
 
+// Helper function - get number of enemies for a specific level
+UINT8 GetNumEnemiesPerLevel(UINT level)
+{
+	UINT8 numEnemies;
+
+	numEnemies = 6 + (level / 4);
+	if (numEnemies > MAX_ENEMIES)
+		numEnemies = MAX_ENEMIES;
+
+	return numEnemies;
+}
+
 // Setup the sprites according to the level
 void SetupSprites(UINT8 level)
 {
 	UINT8 i;
+	UINT8 numEnemies;
 
 	for (i = 1; i < MAX_SPRITES; i++)
 		{
@@ -372,10 +397,13 @@ void SetupSprites(UINT8 level)
 		}
 
 	// Set up enemy bird sprites
-	for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
+	// Number of enemies increases every time you defeat level 4
+	numEnemies = GetNumEnemiesPerLevel(level);
+
+	for (i = FIRSTENEMYID; i < FIRSTENEMYID + numEnemies; i++)
 		{
 		objects[i].type = EGG;
-		objects[i].x = rand255();
+		objects[i].x = (rand() % (SCREEN_WIDTH - 20)) + 10;
 		objects[i].y = (i - FIRSTENEMYID) * 20;
 		objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
 		objects[i].frame = 0; //(i % 7) + 7;
@@ -450,7 +478,7 @@ void DropEnemyBullet(OBJECT *pParentObject)
 		if (ST_INACTIVE == pBulletObject->state)
 			{
 			// Set up new enemy bullet 
-			audio_play(0, 200, 1500, 300);
+			audio_play(0, 75, 1024, 100);
 			pBulletObject->state = ST_ACTIVE;
 			pBulletObject->x = pParentObject->x;
 			pBulletObject->y = pParentObject->y + 16;
@@ -476,12 +504,13 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 		pObject->counter++;
 
 		// Hit player?
-		if (pObject->y > objects[PLAYER].y)
+		// Note: Enemy bullet hitpoint = 8, 3, and enemy bullet sprite width = player sprite width
+		if (pObject->y > objects[PLAYER].y && pObject->y < (objects[PLAYER].y + 16))
 			{
-			if (abs(pObject->x - objects[PLAYER].x) < 12)
+			if (abs(pObject->x - objects[PLAYER].x) < 9)
 				{
 				// Kill the player
-				audio_play(1, 240, 70, 666);
+				audio_play(1, 120, 70, 666);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
 /*				objects[n].frame = 14;
@@ -494,7 +523,7 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 				}
 			}
 
-		if (level < 2)
+		if (level < 4)
 			pObject->y += 1;
 		else
 			pObject->y += 2;
@@ -537,7 +566,11 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			if (224 == pObject->counter)
 				{
 				//pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
-				pObject->type = BIGBIRD;
+				// First 2 levels of every round, egg hatches to small bird
+				if (level & 0x2)
+					pObject->type = BIGBIRD;
+				else
+					pObject->type = BIRD;
 				pObject->state = ST_MOVERANDOM;
 				pObject->dirn = GetRandomDirection();
 				pObject->counter = 0;
@@ -566,13 +599,13 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			if (d & DIRN_LEFT)
 				{
 				pObject->x--;
-				if (0 == pObject->x)
+				if (pObject->x < 10)
 					pObject->dirn = (d & 0x0C) | DIRN_RIGHT;		// Bounce off left edge of screen
 				}
 			else if (d & DIRN_RIGHT)
 				{
 				pObject->x++;
-				if (pObject->x == (SCREEN_WIDTH - 32))
+				if (pObject->x > (SCREEN_WIDTH - 32))
 					pObject->dirn = (d & 0x0C) | DIRN_LEFT;		// Bounce off right edge of screen
 				}
 
@@ -582,7 +615,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 				if (d & DIRN_UP)
 					{
 					pObject->y--;
-					if (0 == pObject->y)
+					if (pObject->y < 10)
 						pObject->dirn = (d & 0x03) | DIRN_DOWN;	// Bounce bird off top of screen
 					}
 				else if (d & DIRN_DOWN)
@@ -601,7 +634,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			// Time to choose a new direction?
 			if (64 == pObject->counter)
 				{
-				pObject->dirn = GetRandomDirection();		// up/donw/left/right bitmask
+				pObject->dirn = GetRandomDirection();		// up/down/left/right bitmask
 				pObject->counter = 0;
 				}
 
@@ -633,101 +666,45 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 }
 
 
-/// @param[in] argc			Argument count
-/// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
-int main(int argc, char * argv[]) {
-	UINT16 i;
+/// Play a level
+/// @param[in] level		The level to set up and play
+/// @return				The level quit state (player win, player dead etc)
+UINT8 PlayLevel(UINT8 level)
+{
+	UINT8 endState = 0;
+	UINT8 numEnemies;
 	UINT8 n;
+	UINT8 numActiveEnemies;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
-	UINT8 numActiveEnemies = 0;
-	UINT8 level = 0;
-	
-	vdp_mode(2);
-	vdp_cursorDisable();
-	vdp_cls();
 
-	// Set GPIO port C as input (mode 2)
-//	printf("Setting up GPIO port C for joystick...\n\r");
-//	setmode_PortC(0xFF, GPIOMODE_INPUT) ;
-	
-/* 	printf("Hello World\n\r");
-	printf("Arguments:\n\r");
-	printf("- argc: %d\n\r", argc);
-	
-	for(i = 0; i < argc; i++) {
-		printf("- argv[%d]: %s\n\r", i, argv[i]);
-	} */
-	
-	// Upload sprite data to the VDP
-	// Bitmaps 0 to 8 are for player + player bullet
-	printf("Uploading bitmaps...\n\r");
-	UploadBitmaps();
+	// Level intermission - Scroll screen and fill with stars
+	if (level > 0)
+		{
+		for (n = 0; n < SCREEN_HEIGHT; n++)
+			{
+			waitvblank();
+			vdp_scroll(0, 2, 1);
+			vdp_plotColour(rand255());
+			vdp_plotPoint(rand255() * 5, 1023);			// plot coordinates!
+			}
+		}
 
-	DoTitle();
-	
-//	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
-
-	// Set up sprites
-	// Note: BBCBASIC procedure:
-	//    1. Select sprite n   (VDU 23, 27, 4, n)
-	//    2. Clear frames for current sprite  (VDU 23, 27, 5)
-	//    3. Add bitmap 0 as frame 0 of current sprite (VDU 23, 27, 6, 0)
-	//    4. Show the current sprite (VDU 23, 27, 11)
-	//    5. Set total number of sprites to display (VDU 23, 27, 7, total)
-	//   Move the sprites:
-	//    1. Select sprite n (VDU 23, 27, 4, n)
-	//    2. Move selected sprite to  (VDU 23, 27, 13, X, Y) 
-	//   Refresh the sprites
-	//    1. *FX19    (wait for VSYNC)
-	//    2. Refresh (VDU 23, 27, 15)
-	
-/* 	vdp_spriteSelect(0);
-	vdp_spriteClearFramesSelected();
-	vdp_spriteAddFrameSelected(0);
-	vdp_spriteShowSelected();
-	vdp_spriteActivateTotal(1);
-	
-	vdp_spriteSelect(0);
-	vdp_spriteMoveToSelected(100, 100); */
-	
-	
-	
-
-
-
-/*
-	vdp_spriteClearFrames(0);
-	vdp_spriteClearFrames(1);
-	vdp_spriteClearFrames(2);
-	vdp_spriteClearFrames(3);
-	vdp_spriteAddFrame(0, 0);			// player
-	vdp_spriteAddFrame(1, 1);			// player bullet
-	vdp_spriteAddFrame(2, 2);			// ufo frame 0
-	vdp_spriteAddFrame(2, 3);			// ufo frame 1
-	vdp_spriteAddFrame(2, 4);			// ufo frame 2
-	vdp_spriteAddFrame(3, 5);			// ufo bullet
-
-	vdp_spriteMoveTo(0, 100, 100);
-	vdp_spriteMoveTo(2, 140, 140);
-
-	vdp_spriteSelect(0);
-	vdp_spriteSetFrameSelected(0);
-	vdp_spriteMoveToSelected(100, 100);
-	
-	vdp_spriteActivateTotal(3);
-*/
+	vdp_cursorGoto(0, 0);
+	printf("Level: %d   ", level + 1);
 
 	//printf("Setting up sprites...\n\r");
 	SetupSprites(level);
 
 //	getch();
-	
-	vdp_spriteActivateTotal(16);
+
+	// Activate the correct no of sprites?
+	numEnemies = GetNumEnemiesPerLevel(level);
+	vdp_spriteActivateTotal(FIRSTENEMYID + numEnemies);
 	vdp_spriteRefresh();
 //	getch();
 		
-	for (i = 0; i < 1100; i++)
+	while (!endState)
 		{
 		waitvblank();
 
@@ -740,7 +717,7 @@ int main(int argc, char * argv[]) {
 		
 		// Move enemies
 		numActiveEnemies = 0;
-		for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
+		for (n = FIRSTENEMYID; n < FIRSTENEMYID + numEnemies; n++)
 			{
 			if (objects[n].state != ST_INACTIVE)
 				{
@@ -777,7 +754,7 @@ int main(int argc, char * argv[]) {
 						if (t < 16)
 							{
 							// Kill the enemy
-							audio_play(1, 240, 70, 666);
+							audio_play(1, 100, 75, 250);
 							objects[n].state = ST_DYING;			// Start dying animation
 							objects[n].counter = 0;
 							objects[n].frame = 22;
@@ -832,7 +809,7 @@ int main(int argc, char * argv[]) {
 			if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
 				{
 				// Fire bullet 
-				audio_play(0, 200, 1000, 300);
+				audio_play(0, 100, 880, 100);
 				objects[PLAYERBULLET].state = ST_ACTIVE;
 				objects[PLAYERBULLET].x = objects[PLAYER].x;
 				objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
@@ -846,7 +823,7 @@ int main(int argc, char * argv[]) {
 			vdp_spriteSetFrame(PLAYER, objects[PLAYER].counter / 8);
 			objects[PLAYER].counter++;
 			if (32 == objects[PLAYER].counter)
-				break;	// End game
+				endState = 1;
 			}
 
 		vdp_spriteRefresh();
@@ -858,13 +835,105 @@ int main(int argc, char * argv[]) {
 		//printf("%d\n\r", flags);
 */
 		}
+
+	return endState;
+}
+
+
+/// @param[in] argc			Argument count
+/// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
+int main(int argc, char * argv[]) {
+	UINT16 i;
+	//UINT8 n;
+	//UINT8 keycode, stick, flags;
+	//UINT16 t;
+	//UINT8 numActiveEnemies = 0;
+	UINT8 level = 0;
+	UINT8 levelEndState = 0; 
 	
+	vdp_mode(2);
+	vdp_cursorDisable();
+	vdp_cls();
+
+	// Set GPIO port C as input (mode 2)
+//	printf("Setting up GPIO port C for joystick...\n\r");
+//	setmode_PortC(0xFF, GPIOMODE_INPUT) ;
+	
+/* 	printf("Hello World\n\r");
+	printf("Arguments:\n\r");
+	printf("- argc: %d\n\r", argc);
+	
+	for(i = 0; i < argc; i++) {
+		printf("- argv[%d]: %s\n\r", i, argv[i]);
+	} */
+	
+	// Upload sprite data to the VDP
+	// Bitmaps 0 to 8 are for player + player bullet
+	printf("Uploading bitmaps...\n\r");
+	UploadBitmaps();
+
+	DoTitle();
+	
+//	vdp_bitmapDraw(BID_EXPLOSION3, 200, 100);
+
+	// Set up sprites
+	// Note: BBCBASIC procedure:
+	//    1. Select sprite n   (VDU 23, 27, 4, n)
+	//    2. Clear frames for current sprite  (VDU 23, 27, 5)
+	//    3. Add bitmap 0 as frame 0 of current sprite (VDU 23, 27, 6, 0)
+	//    4. Show the current sprite (VDU 23, 27, 11)
+	//    5. Set total number of sprites to display (VDU 23, 27, 7, total)
+	//   Move the sprites:
+	//    1. Select sprite n (VDU 23, 27, 4, n)
+	//    2. Move selected sprite to  (VDU 23, 27, 13, X, Y) 
+	//   Refresh the sprites
+	//    1. *FX19    (wait for VSYNC)
+	//    2. Refresh (VDU 23, 27, 15)
+	
+/* 	vdp_spriteSelect(0);
+	vdp_spriteClearFramesSelected();
+	vdp_spriteAddFrameSelected(0);
+	vdp_spriteShowSelected();
+	vdp_spriteActivateTotal(1);
+	
+	vdp_spriteSelect(0);
+	vdp_spriteMoveToSelected(100, 100); */
+
+/*
+	vdp_spriteClearFrames(0);
+	vdp_spriteClearFrames(1);
+	vdp_spriteClearFrames(2);
+	vdp_spriteClearFrames(3);
+	vdp_spriteAddFrame(0, 0);			// player
+	vdp_spriteAddFrame(1, 1);			// player bullet
+	vdp_spriteAddFrame(2, 2);			// ufo frame 0
+	vdp_spriteAddFrame(2, 3);			// ufo frame 1
+	vdp_spriteAddFrame(2, 4);			// ufo frame 2
+	vdp_spriteAddFrame(3, 5);			// ufo bullet
+
+	vdp_spriteMoveTo(0, 100, 100);
+	vdp_spriteMoveTo(2, 140, 140);
+
+	vdp_spriteSelect(0);
+	vdp_spriteSetFrameSelected(0);
+	vdp_spriteMoveToSelected(100, 100);
+	
+	vdp_spriteActivateTotal(3);
+*/
+
+	levelEndState = 0;
+	while (0 == levelEndState)
+		{
+		levelEndState = PlayLevel(level);
+		level++;
+		}
+
 	vdp_cursorEnable();
 	
 //	vdp_mode(1);
 
 	vdp_cursorGoto(0, 22);
-	if (0 == numActiveEnemies)
+	if (0 == levelEndState)
 		printf("Congratulations!\n\rYou defeated the defenseless Space Birds!\n\r");
 	else
 		printf("Fail!\n\rYou did not defeat the Space Birds in time!\n\rTry again.\n\r");

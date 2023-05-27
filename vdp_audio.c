@@ -22,7 +22,7 @@
 //	word frequency
 //	word duration
 
-UINT8 audio_play(UINT8 channel, UINT8 volume, UINT8 frequencty, UINT8 duration)
+UINT8 audio_play(UINT8 channel, UINT8 volume, UINT16 frequency, UINT16 duration)
 {
 	unsigned int delay = 1000;
 
@@ -32,8 +32,8 @@ UINT8 audio_play(UINT8 channel, UINT8 volume, UINT8 frequencty, UINT8 duration)
 	putch(channel);
 	putch(0);			// waveform (does not matter)
 	putch(volume);
-    putch(frequencty & 0xFF);
-    putch(frequencty >> 8);
+    putch(frequency & 0xFF);
+    putch(frequency >> 8);
     putch(duration & 0xFF);
     putch(duration >> 8);
 
@@ -41,3 +41,15 @@ UINT8 audio_play(UINT8 channel, UINT8 volume, UINT8 frequencty, UINT8 duration)
 	while (delay--);
 	return getsysvar_audioSuccess();
 }
+
+/* For reference (from video.ino):
+void vdu_sys_audio() {
+	int channel = readByte_t();		if(channel == -1) return;
+	int waveform = readByte_t();	if(waveform == -1) return;
+	int volume = readByte_t();		if(volume == -1) return;
+	int frequency = readWord_t();	if(frequency == -1) return;
+	int duration = readWord_t();	if(duration == -1) return;
+
+	sendPlayNote(channel, play_note(channel, volume, frequency, duration));
+}
+*/
