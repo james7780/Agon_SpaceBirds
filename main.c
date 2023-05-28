@@ -60,6 +60,9 @@
 #define MAX_ENEMIES		10
 #define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES + 1)	// index of the last enemy in the object array
 
+#define MAX_BOMBDROPCHANCE	100				// Chance of any enemy dropping a bullet every frame (n/65536)
+
+
 // Bitmaps ids
 enum {
 	BID_PLAYER0 = 0,			// 0 to 7 - Player and player bullet bitmap id's
@@ -196,7 +199,7 @@ OBJECT objects[MAX_SPRITES] = {
 };
 
 // Global Variables (oooh!)
-int bombDropChance = 80;				// 40 / 65536 chance
+int bombDropChance = 40;				// 40 / 65536 chance
 
 UINT8 rand255()
 {
@@ -565,7 +568,6 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 		case ST_EGG :
 			if (224 == pObject->counter)
 				{
-				//pObject->state = (rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
 				// First 2 levels of every round, egg hatches to small bird
 				if (level & 0x2)
 					pObject->type = BIGBIRD;
@@ -573,25 +575,29 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 					pObject->type = BIRD;
 				pObject->state = ST_MOVERANDOM;
 				pObject->dirn = GetRandomDirection();
-				pObject->counter = 0;
+				pObject->frame = 7;
+				pObject->counter = rand255();		//0; 
 				}
-
-			pObject->frame = (UINT8)pObject->counter >> 5;
+			else
+				{
+				// Update egg animation frame
+				pObject->frame = (UINT8)pObject->counter >> 5;
+				}
 			break;
-		case ST_MOVERIGHT :
-			pObject->x++;
-			if (pObject->x == 319)
-				pObject->state = ST_MOVELEFT;
-
-			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);\
-			break;
-		case ST_MOVELEFT :
-			pObject->x--;
-			if (pObject->x == 0)
-				pObject->state = ST_MOVERIGHT;
-
-			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
-			break;
+//		case ST_MOVERIGHT :
+//			pObject->x++;
+//			if (pObject->x == 319)
+//				pObject->state = ST_MOVELEFT;
+//
+//			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);\
+//			break;
+//		case ST_MOVELEFT :
+//			pObject->x--;
+//			if (pObject->x == 0)
+//				pObject->state = ST_MOVERIGHT;
+//
+//			pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+//			break;
 		case ST_MOVERANDOM :
 			// Move counter frames in the current object "direction"
 			// Dirn is 4-bit bitmask for left/right/up/down bits
@@ -615,14 +621,26 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 				if (d & DIRN_UP)
 					{
 					pObject->y--;
-					if (pObject->y < 10)
-						pObject->dirn = (d & 0x03) | DIRN_DOWN;	// Bounce bird off top of screen
+					if (pObject->y < 5)
+						{
+						pObject->dirn = DIRN_DOWN;	//(d & 0x03) | DIRN_DOWN;	// Bounce bird off top of screen
+						}
 					}
 				else if (d & DIRN_DOWN)
 					{
 					pObject->y++;
-					if (SCREEN_HEIGHT == pObject->y)
-						pObject->y = 0;		// Put bird back at top of screen
+					// If bird goes off bottom of screen, then put back at top
+					// and set it's direction to downwards
+					if (pObject->y > SCREEN_HEIGHT)
+						{
+						pObject->y = 0;
+						pObject->dirn = DIRN_DOWN;
+						if (pObject->x < 40)
+							pObject->dirn |= DIRN_RIGHT;
+						else if (pObject->x > SCREEN_WIDTH - 40)
+							pObject->dirn |= DIRN_LEFT;
+						pObject->counter = 0;
+						}
 					}
 				}
 
@@ -632,16 +650,22 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 				pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
 
 			// Time to choose a new direction?
-			if (64 == pObject->counter)
+			if ((pObject->counter % 64) == 0)
 				{
 				pObject->dirn = GetRandomDirection();		// up/down/left/right bitmask
-				pObject->counter = 0;
 				}
 
 			// Time to fire a bullet / drop a bomb?
-			if (rand() < bombDropChance)
+			if (BIRD == pObject->type && rand() < bombDropChance)
+				DropEnemyBullet(pObject);
+			else if (BIGBIRD == pObject->type && rand() < (bombDropChance * 2))		// Big birds drop twice as many bombs
 				DropEnemyBullet(pObject);
 
+			// Small bird grows to big bird?
+			if (BIRD == pObject->type && 0x400 == pObject->counter && (level & 0x3) == 1)
+				{
+				pObject->type = BIGBIRD;
+				}
 			break;
 		case ST_DYING :
 			pObject->frame = 22 + ((UINT8)pObject->counter >> 2);			// Explosion frames
@@ -677,10 +701,16 @@ UINT8 PlayLevel(UINT8 level)
 	UINT8 numActiveEnemies;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
+	UINT8 xhit, yhit;			// for collision detection
 
 	// Level intermission - Scroll screen and fill with stars
 	if (level > 0)
 		{
+		// Hide all extraneous sprites besides player
+		for (n = 1; n <= LASTENEMYBULLETID; n++)
+			vdp_spriteHide(n);
+		vdp_spriteRefresh();
+
 		for (n = 0; n < SCREEN_HEIGHT; n++)
 			{
 			waitvblank();
@@ -703,6 +733,10 @@ UINT8 PlayLevel(UINT8 level)
 	vdp_spriteActivateTotal(FIRSTENEMYID + numEnemies);
 	vdp_spriteRefresh();
 //	getch();
+
+	bombDropChance = 40 + (level * 5);				// Starting enemy bullet chance = 40/65536
+	if (bombDropChance > MAX_BOMBDROPCHANCE)
+		bombDropChance = MAX_BOMBDROPCHANCE;
 		
 	while (!endState)
 		{
@@ -730,7 +764,7 @@ UINT8 PlayLevel(UINT8 level)
 		if (0 == numActiveEnemies)
 			break;
 			
-		// Update bullet
+		// Update player bullet
 		if (ST_ACTIVE == objects[PLAYERBULLET].state)
 			{
 			vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
@@ -748,10 +782,20 @@ UINT8 PlayLevel(UINT8 level)
 					if (ST_INACTIVE == objects[n].state || ST_DYING == objects[n].state)
 						continue;
 
-					if (abs((objects[n].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12)
+					// Different collision detection for egss and small birds, vs big birds
+					if(BIGBIRD == objects[n].type)
+						xhit = (abs((objects[n].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12);
+					else
+						xhit = (abs(objects[n].x - objects[PLAYERBULLET].x) < 9);
+
+					if (xhit)
 						{
-						t = objects[PLAYERBULLET].y - objects[n].y;			// UINT16
-						if (t < 16)
+						if (BIGBIRD == objects[n].type)
+							yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 20);
+						else
+							yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 14);
+
+						if (yhit)
 							{
 							// Kill the enemy
 							audio_play(1, 100, 75, 250);
@@ -763,7 +807,6 @@ UINT8 PlayLevel(UINT8 level)
 							objects[PLAYERBULLET].state = ST_INACTIVE;
 							vdp_spriteHide(PLAYERBULLET);
 							}
-
 						}
 					}
 				}
