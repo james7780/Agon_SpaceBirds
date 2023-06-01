@@ -30,7 +30,7 @@
 //    - Enemies start shooting bullets at an angle
 
 #include <stdio.h>
-#include <ctype.h>
+//#include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
 #include <gpio.h>				// For joystick
@@ -57,8 +57,8 @@
 #define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
 #define LASTENEMYBULLETID	7
 #define FIRSTENEMYID		8				// index of the first enemy in the object array
-#define MAX_ENEMIES		10
-#define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES + 1)	// index of the last enemy in the object array
+#define MAX_ENEMIES		12
+#define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES - 1)	// index of the last enemy in the object array
 
 #define MAX_BOMBDROPCHANCE	100				// Chance of any enemy dropping a bullet every frame (n/65536)
 
@@ -198,8 +198,21 @@ OBJECT objects[MAX_SPRITES] = {
 	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
+// Points for each enemy type (for scoring)
+const int PointsPerType[8] = {
+	0, 				// PLAYER = 0,
+	0, 				// PLAYERBULLET,
+	0, 				// ENEMYBULLET,
+	50, 			// EGG,
+	50, 			// BIRD,
+	100, 			// BIGBIRD
+	0
+	};
+
 // Global Variables (oooh!)
 int bombDropChance = 40;				// 40 / 65536 chance
+int score = 0;
+int hiscore = 0;
 
 UINT8 rand255()
 {
@@ -266,6 +279,13 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7]);
 	vdp_bitmapSendData(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8]);
 
+}
+
+// Redraw the score display
+void UpdateScore()
+{
+	vdp_cursorGoto(0, 0);
+	printf("SCORE: %d", score);
 }
 
 // Show the title sequence
@@ -403,13 +423,27 @@ void SetupSprites(UINT8 level)
 	// Number of enemies increases every time you defeat level 4
 	numEnemies = GetNumEnemiesPerLevel(level);
 
-	for (i = FIRSTENEMYID; i < FIRSTENEMYID + numEnemies; i++)
+	// We have to set up animation frames for all possible enemy sprites, so that we
+	// can spawn additional enemies during gameplay
+	for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
 		{
-		objects[i].type = EGG;
-		objects[i].x = (rand() % (SCREEN_WIDTH - 20)) + 10;
-		objects[i].y = (i - FIRSTENEMYID) * 20;
-		objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
-		objects[i].frame = 0; //(i % 7) + 7;
+		if (i < FIRSTENEMYID + numEnemies)
+			{
+			// Active enemy for this level
+			objects[i].type = EGG;
+			objects[i].x = (rand() % (SCREEN_WIDTH - 20)) + 10;
+			objects[i].y = (i - FIRSTENEMYID) * 20;
+			objects[i].state = ST_EGG;		//(rand255() > 127) ? ST_MOVELEFT : ST_MOVERIGHT;
+			}
+		else
+			{
+			// Active enemy "slot" for this level
+			objects[i].type = BIRD;
+			objects[i].x = 0;
+			objects[i].y = SCREEN_HEIGHT;
+			objects[i].state = ST_INACTIVE;
+			}
+		objects[i].frame = 0;
 		objects[i].counter = 0;
 		vdp_spriteSelect(i);
 		vdp_spriteClearFramesSelected();
@@ -443,7 +477,8 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrameSelected(BID_EXPLOSION6);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION7);
 		vdp_spriteSetFrameSelected(objects[i].frame);
-		vdp_spriteShowSelected();
+		if (i < FIRSTENEMYID + numEnemies)
+			vdp_spriteShowSelected();				// Only show the inital number of enemies starting this level
 		}
 }
 
@@ -553,10 +588,12 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 void UpdateEnemy(UINT8 n, UINT8 level)
 {
 	UINT8 d = 0;
+	UINT8 i;
 	UINT16 f2;
 	UINT16 f4;
 
 	OBJECT *pObject = &objects[n];
+	OBJECT *pEnemyObject = NULL;
 
 	pObject->counter++;
 
@@ -661,10 +698,46 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			else if (BIGBIRD == pObject->type && rand() < (bombDropChance * 2))		// Big birds drop twice as many bombs
 				DropEnemyBullet(pObject);
 
-			// Small bird grows to big bird?
+			// Small bird grows to big bird? (level 2/4 only)
 			if (BIRD == pObject->type && 0x400 == pObject->counter && (level & 0x3) == 1)
 				{
 				pObject->type = BIGBIRD;
+				pObject->counter = rand255();
+				}
+
+			// Big bird splits into 2 small birds? (level 3/4 only)
+			if (BIGBIRD == pObject->type && 0x400 == pObject->counter && (level & 0x3) == 2)
+				{
+				// First see if we can spawn another bird
+				for (i = FIRSTENEMYID; i <= LASTENEMYID; i++)
+					{
+					if (i == n)
+						continue;
+
+					pEnemyObject = &objects[i];
+					if (ST_INACTIVE == pEnemyObject->state)
+						{
+						// Set up new enemy bird, going right
+						audio_play(0, 75, 2000, 300);
+						pEnemyObject->type = BIRD;
+						pEnemyObject->state = ST_MOVERANDOM;
+						pEnemyObject->x = pObject->x;
+						pEnemyObject->y = pObject->y;
+						pEnemyObject->counter = 32;		// Half way to next direction decision
+						pEnemyObject->dirn = DIRN_RIGHT;
+						vdp_spriteMoveTo(i, pEnemyObject->x, pEnemyObject->y);
+						vdp_spriteShow(i);
+						break;				// i will be new bird index at this point
+						}
+					}
+
+				// If we could successfuly spawn a small bird then turn this bird into a small bird, going left
+				if (i <= LASTENEMYID)
+					{
+					pObject->type = BIRD;
+					pObject->counter = 32;		// Half way to next direction decision
+					pObject->dirn = DIRN_LEFT;
+					}
 				}
 			break;
 		case ST_DYING :
@@ -696,7 +769,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 UINT8 PlayLevel(UINT8 level)
 {
 	UINT8 endState = 0;
-	UINT8 numEnemies;
+	//UINT8 numEnemies;
 	UINT8 n;
 	UINT8 numActiveEnemies;
 	UINT8 keycode, stick, flags;
@@ -720,8 +793,10 @@ UINT8 PlayLevel(UINT8 level)
 			}
 		}
 
-	vdp_cursorGoto(0, 0);
+	// Show current level and score display
+	vdp_cursorGoto(30, 0);
 	printf("Level: %d   ", level + 1);
+	UpdateScore();
 
 	//printf("Setting up sprites...\n\r");
 	SetupSprites(level);
@@ -729,8 +804,8 @@ UINT8 PlayLevel(UINT8 level)
 //	getch();
 
 	// Activate the correct no of sprites?
-	numEnemies = GetNumEnemiesPerLevel(level);
-	vdp_spriteActivateTotal(FIRSTENEMYID + numEnemies);
+	//numEnemies = GetNumEnemiesPerLevel(level);
+	vdp_spriteActivateTotal(LASTENEMYID + 1);
 	vdp_spriteRefresh();
 //	getch();
 
@@ -751,7 +826,7 @@ UINT8 PlayLevel(UINT8 level)
 		
 		// Move enemies
 		numActiveEnemies = 0;
-		for (n = FIRSTENEMYID; n < FIRSTENEMYID + numEnemies; n++)
+		for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
 			{
 			if (objects[n].state != ST_INACTIVE)
 				{
@@ -806,6 +881,9 @@ UINT8 PlayLevel(UINT8 level)
 							// Also kill the bullet
 							objects[PLAYERBULLET].state = ST_INACTIVE;
 							vdp_spriteHide(PLAYERBULLET);
+							// Update the score display
+							score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
+							UpdateScore();
 							}
 						}
 					}
@@ -891,8 +969,9 @@ int main(int argc, char * argv[]) {
 	//UINT8 keycode, stick, flags;
 	//UINT16 t;
 	//UINT8 numActiveEnemies = 0;
-	UINT8 level = 0;
+	UINT8 level = 2;
 	UINT8 levelEndState = 0; 
+
 	
 	vdp_mode(2);
 	vdp_cursorDisable();
@@ -964,6 +1043,7 @@ int main(int argc, char * argv[]) {
 	vdp_spriteActivateTotal(3);
 */
 
+	score = 0;
 	levelEndState = 0;
 	while (0 == levelEndState)
 		{
