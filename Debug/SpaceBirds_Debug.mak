@@ -157,7 +157,6 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\vdp_audio.h  \
             $(INCLUDE_ESCSPACE)\std\Format.h  \
             $(INCLUDE_ESCSPACE)\std\Stdarg.h  \
-            $(INCLUDE_ESCSPACE)\std\CTYPE.H  \
             $(INCLUDE_ESCSPACE)\std\Math.h  \
             $(INCLUDE_ESCSPACE)\std\Stdio.h  \
             $(INCLUDE_ESCSPACE)\std\Stdlib.h  \

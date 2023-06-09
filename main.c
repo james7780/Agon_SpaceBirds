@@ -20,7 +20,7 @@
 
 // Levels (affects SetupSprites() and UpdateEnemies()):
 // 1. Eggs to smal birds
-// 2. Eggs to small birds to buig birds
+// 2. Eggs to small birds to big birds
 // 3. Eggs to big birds, split into 2 if shot
 // 4. Boss?
 // Levels repeat like this (1-4 above), but:
@@ -285,7 +285,7 @@ void UploadBitmaps()
 void UpdateScore()
 {
 	vdp_cursorGoto(0, 0);
-	printf("SCORE: %d", score);
+	printf("SCORE: %ld", score);
 }
 
 // Show the title sequence
@@ -509,6 +509,10 @@ void DropEnemyBullet(OBJECT *pParentObject)
 	if (!pParentObject)
 		return;
 
+	// Don't allow enemies to fire from too low
+	if (pParentObject->y > (SCREEN_HEIGHT - 60))
+		return;
+
 	// Find first inactive enemy bullet object/sprite
 	for (n = FIRSTENEMYBULLETID; n <= LASTENEMYBULLETID; n++)
 		{
@@ -518,7 +522,7 @@ void DropEnemyBullet(OBJECT *pParentObject)
 			// Set up new enemy bullet 
 			audio_play(0, 75, 1024, 100);
 			pBulletObject->state = ST_ACTIVE;
-			pBulletObject->x = pParentObject->x;
+			pBulletObject->x = (BIGBIRD == pParentObject->type) ? pParentObject->x + 8 : pParentObject->x;
 			pBulletObject->y = pParentObject->y + 16;
 			vdp_spriteMoveTo(n, pBulletObject->x, pBulletObject->y);
 			vdp_spriteShow(n);
@@ -551,12 +555,7 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 				audio_play(1, 120, 70, 666);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
-/*				objects[n].frame = 14;
-				//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
-				// Also kill the bullet
-				objects[PLAYERBULLET].state = ST_INACTIVE;
-				vdp_spriteHide(1);
-*/
+
 				pObject->y = SCREEN_HEIGHT;			// kill this bullet below
 				}
 			}
@@ -758,10 +757,115 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 		{
 		vdp_spriteMoveTo(n, pObject->x, pObject->y);
 		vdp_spriteSetFrame(n, pObject->frame);
+
+		// Check for collision with player
+		d = (BIGBIRD == pObject->type) ? 24 : 12;				// coll "diameter" of enemy
+		i = (BIGBIRD == pObject->type) ? 8 : 0;				// enemy top-left offset relative to player sprite
+		if (pObject->y > (objects[PLAYER].y - d) && pObject->y < (objects[PLAYER].y + 14))
+			{
+			if (abs(pObject->x + i - objects[PLAYER].x) <= d)
+				{
+				// Kill the player
+				audio_play(1, 120, 70, 666);
+				objects[PLAYER].state = ST_DYING;			// Start dying animation
+				objects[PLAYER].counter = 0;
+				}
+			}
 		}
 
 }
 
+/// Update the player's bullet (if active)
+void UpdatePlayerBullet()
+{
+	UINT8 n;
+	UINT8 xhit, yhit;			// for collision detection
+
+	vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
+
+	objects[PLAYERBULLET].y -= 4;
+	if (objects[PLAYERBULLET].y < 4)
+		{
+		objects[PLAYERBULLET].state = ST_INACTIVE;
+		vdp_spriteHide(PLAYERBULLET);
+		}
+	else
+		{
+		// Check bullet against birds (collision)
+		for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
+			{
+			if (ST_INACTIVE == objects[n].state || ST_DYING == objects[n].state)
+				continue;
+
+			// Different collision detection for egss and small birds, vs big birds
+			if(BIGBIRD == objects[n].type)
+				xhit = (abs((objects[n].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12);
+			else
+				xhit = (abs(objects[n].x - objects[PLAYERBULLET].x) < 9);
+
+			if (xhit)
+				{
+				if (BIGBIRD == objects[n].type)
+					yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 20);
+				else
+					yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 14);
+
+				if (yhit)
+					{
+					// Kill the enemy
+					audio_play(1, 100, 75, 250);
+					objects[n].state = ST_DYING;			// Start dying animation
+					objects[n].counter = 0;
+					objects[n].frame = 22;
+					//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
+					// Also kill the bullet
+					objects[PLAYERBULLET].state = ST_INACTIVE;
+					vdp_spriteHide(PLAYERBULLET);
+					// Update the score display
+					score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
+					UpdateScore();
+					}
+				}
+			}
+		}
+
+}
+
+/// Update player movement, check for player fire
+void UpdatePlayer(UINT8 keycode)
+{
+	UINT8 stick;
+
+	// Move via keyboard (janky)
+	if (8 == keycode && objects[PLAYER].x > 0)
+		objects[PLAYER].x -= 2;
+	else if (21 == keycode && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+		objects[PLAYER].x += 2;
+
+
+	// Read joystick and update player position and sprite
+	GETDR_PORTC(stick);
+	//printf("%d- ", stick);
+	//stick = 255;
+	if (0 == (stick & 8) && objects[PLAYER].x > 0)
+		objects[PLAYER].x -= 2;
+	else if (0 == (stick & 16) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+		objects[PLAYER].x += 2;
+
+	vdp_spriteMoveTo(PLAYER, objects[PLAYER].x, objects[PLAYER].y);
+
+	if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
+		{
+		// Fire bullet 
+		audio_play(0, 100, 880, 100);
+		objects[PLAYERBULLET].state = ST_ACTIVE;
+		objects[PLAYERBULLET].x = objects[PLAYER].x;
+		objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
+		vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
+		vdp_spriteShow(PLAYERBULLET);
+		}
+
+}
 
 /// Play a level
 /// @param[in] level		The level to set up and play
@@ -769,12 +873,10 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 UINT8 PlayLevel(UINT8 level)
 {
 	UINT8 endState = 0;
-	//UINT8 numEnemies;
 	UINT8 n;
 	UINT8 numActiveEnemies;
 	UINT8 keycode, stick, flags;
 	UINT16 t;
-	UINT8 xhit, yhit;			// for collision detection
 
 	// Level intermission - Scroll screen and fill with stars
 	if (level > 0)
@@ -841,54 +943,7 @@ UINT8 PlayLevel(UINT8 level)
 			
 		// Update player bullet
 		if (ST_ACTIVE == objects[PLAYERBULLET].state)
-			{
-			vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
-			objects[PLAYERBULLET].y -= 4;
-			if (objects[PLAYERBULLET].y < 4)
-				{
-				objects[PLAYERBULLET].state = ST_INACTIVE;
-				vdp_spriteHide(PLAYERBULLET);
-				}
-			else
-				{
-				// Check bullet against birds (collision)
-				for (n = FIRSTENEMYID; n <= LASTENEMYID; n++)
-					{
-					if (ST_INACTIVE == objects[n].state || ST_DYING == objects[n].state)
-						continue;
-
-					// Different collision detection for egss and small birds, vs big birds
-					if(BIGBIRD == objects[n].type)
-						xhit = (abs((objects[n].x + 16) - (objects[PLAYERBULLET].x + 8)) < 12);
-					else
-						xhit = (abs(objects[n].x - objects[PLAYERBULLET].x) < 9);
-
-					if (xhit)
-						{
-						if (BIGBIRD == objects[n].type)
-							yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 20);
-						else
-							yhit = ((objects[PLAYERBULLET].y - objects[n].y) < 14);
-
-						if (yhit)
-							{
-							// Kill the enemy
-							audio_play(1, 100, 75, 250);
-							objects[n].state = ST_DYING;			// Start dying animation
-							objects[n].counter = 0;
-							objects[n].frame = 22;
-							//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
-							// Also kill the bullet
-							objects[PLAYERBULLET].state = ST_INACTIVE;
-							vdp_spriteHide(PLAYERBULLET);
-							// Update the score display
-							score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
-							UpdateScore();
-							}
-						}
-					}
-				}
-			}
+			UpdatePlayerBullet();
 
 /*
 		// Too slow (flickers)
@@ -909,34 +964,7 @@ UINT8 PlayLevel(UINT8 level)
 		// Move player (if alive)
 		if (ST_ACTIVE == objects[PLAYER].state)
 			{
-			// Move via keyboard (janky)
-			if (8 == keycode && objects[PLAYER].x > 0)
-				objects[PLAYER].x -= 2;
-			else if (21 == keycode && objects[PLAYER].x < (SCREEN_WIDTH - 16))
-				objects[PLAYER].x += 2;
-			
-
-			// Read joystick and update player position and sprite
-			GETDR_PORTC(stick);
-			//printf("%d- ", stick);
-			//stick = 255;
-			if (0 == (stick & 8) && objects[PLAYER].x > 0)
-				objects[PLAYER].x -= 2;
-			else if (0 == (stick & 16) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
-				objects[PLAYER].x += 2;
-			
-			vdp_spriteMoveTo(PLAYER, objects[PLAYER].x, objects[PLAYER].y);
-			
-			if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
-				{
-				// Fire bullet 
-				audio_play(0, 100, 880, 100);
-				objects[PLAYERBULLET].state = ST_ACTIVE;
-				objects[PLAYERBULLET].x = objects[PLAYER].x;
-				objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
-				vdp_spriteMoveTo(PLAYERBULLET, objects[PLAYERBULLET].x, objects[PLAYERBULLET].y);
-				vdp_spriteShow(PLAYERBULLET);
-				}
+			UpdatePlayer(keycode);
 			}
 		else
 			{
@@ -969,10 +997,9 @@ int main(int argc, char * argv[]) {
 	//UINT8 keycode, stick, flags;
 	//UINT16 t;
 	//UINT8 numActiveEnemies = 0;
-	UINT8 level = 2;
+	UINT8 level = 0;
 	UINT8 levelEndState = 0; 
 
-	
 	vdp_mode(2);
 	vdp_cursorDisable();
 	vdp_cls();
@@ -1056,10 +1083,6 @@ int main(int argc, char * argv[]) {
 //	vdp_mode(1);
 
 	vdp_cursorGoto(0, 22);
-	if (0 == levelEndState)
-		printf("Congratulations!\n\rYou defeated the defenseless Space Birds!\n\r");
-	else
-		printf("Fail!\n\rYou did not defeat the Space Birds in time!\n\rTry again.\n\r");
  
 	return 0;
 }
