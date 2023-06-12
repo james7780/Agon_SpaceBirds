@@ -38,9 +38,10 @@
 #include "vdp.h"
 #include "vdp_audio.h"
 
-#include "sprites/ufos.h"			// for bullets
+#include "sprites/ufos.h"				// for bullets
 #include "sprites/playerShip.h"
 #include "sprites/explosions.h"
+#include "sprites/explosion100.h"		// sideways explosion for big birds 
 #include "sprites/eggs.h"
 #include "sprites/bird_16x12.h"
 #include "sprites/bird_32x24_shaded.h"
@@ -51,8 +52,8 @@
 #define SCREEN_HEIGHT	200
 
 #define MAX_SPRITES		32
-#define BITMAP_WIDTH		16
-#define BITMAP_HEIGHT		16	
+//#define BITMAP_WIDTH		16
+//#define BITMAP_HEIGHT		16	
 
 #define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
 #define LASTENEMYBULLETID	7
@@ -116,7 +117,17 @@ enum {
 	BID_TITLE5,
 	BID_TITLE6,
 	BID_TITLE7,
-	BID_TITLE8
+	BID_TITLE8,
+
+	BID_EXPLOSION100_0,			// 47 to 55 - Explosion100 id's
+	BID_EXPLOSION100_1,
+	BID_EXPLOSION100_2,
+	BID_EXPLOSION100_3,
+	BID_EXPLOSION100_4,
+	BID_EXPLOSION100_5,
+	BID_EXPLOSION100_6,
+	BID_EXPLOSION100_7,
+	BID_EXPLOSION100_8
 	
 };
 
@@ -199,7 +210,7 @@ OBJECT objects[MAX_SPRITES] = {
 };
 
 // Points for each enemy type (for scoring)
-const int PointsPerType[8] = {
+const UINT16 PointsPerType[8] = {
 	0, 				// PLAYER = 0,
 	0, 				// PLAYERBULLET,
 	0, 				// ENEMYBULLET,
@@ -211,7 +222,7 @@ const int PointsPerType[8] = {
 
 // Global Variables (oooh!)
 int bombDropChance = 40;				// 40 / 65536 chance
-int score = 0;
+UINT16 score = 0;
 int hiscore = 0;
 
 UINT8 rand255()
@@ -279,13 +290,25 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7]);
 	vdp_bitmapSendData(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8]);
 
+	// Explosion100 sprite uses bitmaps 38 to 46
+	vdp_bitmapSendData(BID_EXPLOSION100_0, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[0]);
+	vdp_bitmapSendData(BID_EXPLOSION100_1, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[1]);
+	vdp_bitmapSendData(BID_EXPLOSION100_2, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[2]);
+	vdp_bitmapSendData(BID_EXPLOSION100_3, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[3]);
+	vdp_bitmapSendData(BID_EXPLOSION100_4, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[4]);
+	vdp_bitmapSendData(BID_EXPLOSION100_5, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[5]);
+	vdp_bitmapSendData(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6]);
+	vdp_bitmapSendData(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7]);
+	vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
+
+
 }
 
 // Redraw the score display
 void UpdateScore()
 {
 	vdp_cursorGoto(0, 0);
-	printf("SCORE: %ld", score);
+	printf("SCORE: %u", score);
 }
 
 // Show the title sequence
@@ -468,7 +491,7 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrameSelected(BID_BBIRD4);
 		vdp_spriteAddFrameSelected(BID_BBIRD5);
 		vdp_spriteAddFrameSelected(BID_BBIRD6);
-		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 22 to 29 = explosion
+		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 22 to 30 = small explosion
 		vdp_spriteAddFrameSelected(BID_EXPLOSION1);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION2);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION3);
@@ -476,6 +499,16 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrameSelected(BID_EXPLOSION5);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION6);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION7);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION7);	// doubled to make 9 frames
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_0);	// frame 31 to 39 = explosion100 (sideways explosion)
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_1);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_2);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_3);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_4);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_5);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_6);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_7);
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_8);
 		vdp_spriteSetFrameSelected(objects[i].frame);
 		if (i < FIRSTENEMYID + numEnemies)
 			vdp_spriteShowSelected();				// Only show the inital number of enemies starting this level
@@ -740,7 +773,10 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 				}
 			break;
 		case ST_DYING :
-			pObject->frame = 22 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+			if (BIGBIRD == pObject->type)
+				pObject->frame = 31 + ((UINT8)pObject->counter >> 2);			// Explosion100 frames
+			else
+				pObject->frame = 22 + ((UINT8)pObject->counter >> 2);			// Explosion frames
 
 			if (31 == pObject->counter)
 				{
@@ -816,13 +852,14 @@ void UpdatePlayerBullet()
 					audio_play(1, 100, 75, 250);
 					objects[n].state = ST_DYING;			// Start dying animation
 					objects[n].counter = 0;
-					objects[n].frame = 22;
+					objects[n].frame = (BIGBIRD == objects[n].type) ? 30 : 22;
 					//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 					// Also kill the bullet
 					objects[PLAYERBULLET].state = ST_INACTIVE;
 					vdp_spriteHide(PLAYERBULLET);
 					// Update the score display
-					score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
+					//score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
+					score += (objects[n].type * 10);		// Add to score, depending on enemy type we shot
 					UpdateScore();
 					}
 				}
@@ -882,7 +919,7 @@ UINT8 PlayLevel(UINT8 level)
 	if (level > 0)
 		{
 		// Hide all extraneous sprites besides player
-		for (n = 1; n <= LASTENEMYBULLETID; n++)
+		for (n = 1; n <= LASTENEMYID; n++)
 			vdp_spriteHide(n);
 		vdp_spriteRefresh();
 
@@ -897,7 +934,7 @@ UINT8 PlayLevel(UINT8 level)
 
 	// Show current level and score display
 	vdp_cursorGoto(30, 0);
-	printf("Level: %d   ", level + 1);
+	printf("Level: %u   ", level + 1);
 	UpdateScore();
 
 	//printf("Setting up sprites...\n\r");
@@ -993,12 +1030,9 @@ UINT8 PlayLevel(UINT8 level)
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
 int main(int argc, char * argv[]) {
 	UINT16 i;
-	//UINT8 n;
-	//UINT8 keycode, stick, flags;
-	//UINT16 t;
-	//UINT8 numActiveEnemies = 0;
+	UINT8 lives = 3;
 	UINT8 level = 0;
-	UINT8 levelEndState = 0; 
+	UINT8 levelEndState = 0;
 
 	vdp_mode(2);
 	vdp_cursorDisable();
@@ -1071,12 +1105,23 @@ int main(int argc, char * argv[]) {
 */
 
 	score = 0;
-	levelEndState = 0;
-	while (0 == levelEndState)
+	while (lives > 0)
 		{
-		levelEndState = PlayLevel(level);
-		level++;
+		levelEndState = 0;
+		while (0 == levelEndState)
+			{
+			levelEndState = PlayLevel(level);
+			if (0 == levelEndState)
+				level++;
+			}
+		
+		lives--;
 		}
+
+	vdp_cursorGoto(15, 11);
+	printf("GAME OVER");
+
+	vdp_cursorGoto(0, 22);
 
 	vdp_cursorEnable();
 	
