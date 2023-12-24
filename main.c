@@ -2,10 +2,11 @@
  * Title:			Space Critters for Agon Light
  * Author:			James Higgs (Jum Hig)
  * Created:			2023
- * Last Updated:		2023-04-21
+ * Last Updated:		2023-12-21
  *
  * Revisions:
  * 2023-04-21 - Updated to use MOS 1.03
+ * 2023-12-21 - Updated to use MOS 1.04
  */
  
 // VDP functions needed:
@@ -128,7 +129,6 @@ enum {
 	BID_EXPLOSION100_6,
 	BID_EXPLOSION100_7,
 	BID_EXPLOSION100_8
-	
 };
 
 // Object types (type index)
@@ -230,6 +230,7 @@ UINT8 rand255()
 	return (rand() & 0xFF);
 }
 
+// Upload bitmap and sprite data to the VDP
 void UploadBitmaps()
 {
 	// Player and player bullet uses bitmaps 0 to 7
@@ -300,8 +301,6 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6]);
 	vdp_bitmapSendData(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7]);
 	vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
-
-
 }
 
 // Redraw the score display
@@ -368,8 +367,8 @@ void DoTitle()
 		if (startCount < 255)
 			{
 			vdp_scroll(0, 3, 1);
-			vdp_plotColour(rand255());
-			vdp_plotPoint(rand255() * 5, 0);
+			vdp_plotColour(rand255() & 0x0F);
+			vdp_plotPoint(rand255(), 0);
 			for (i = 0; i < TITLE_FRAME_COUNT; i++)
 				objects[i].y--;
 			startCount--;
@@ -927,8 +926,8 @@ UINT8 PlayLevel(UINT8 level)
 			{
 			waitvblank();
 			vdp_scroll(0, 2, 1);
-			vdp_plotColour(rand255());
-			vdp_plotPoint(rand255() * 5, 1023);			// plot coordinates!
+			vdp_plotColour(rand255() & 0x0F);
+			vdp_plotPoint(rand255(), 239);			// plot coordinates!
 			}
 		}
 
@@ -1034,9 +1033,10 @@ int main(int argc, char * argv[]) {
 	UINT8 level = 0;
 	UINT8 levelEndState = 0;
 
-	vdp_mode(2);
+	vdp_mode(VDPMODE_320x240_16C);		//2);
 	vdp_cursorDisable();
 	vdp_cls();
+	vdp_setLogicalCoords(0); 		// Disable BBC "logical coords" (ie: use actual pixel coords)
 
 	// Set GPIO port C as input (mode 2)
 //	printf("Setting up GPIO port C for joystick...\n\r");

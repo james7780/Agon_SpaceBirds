@@ -36,6 +36,14 @@ void vdp_getMode(void) {
 	putch(0x86);
 }
 
+// JH new 1.04 RC2
+void vdp_switchBuffers() {
+	// VDU 23, 0, &C3
+	putch(23);
+	putch(0);
+	putch(0xC3);
+}
+
 void vdp_setPaletteColor(UINT8 index, UINT8 color, UINT8 r, UINT8 g, UINT8 b) {
 	putch(0x13); // VDU palette
 	putch(index);
@@ -82,14 +90,41 @@ void vdp_bgcolour(unsigned char colorindex) {
 // Graphics functions
 //
 
+// JH - Enable/disable BBC-sty;e logical coords
+void vdp_setLogicalCoords(unsigned char n)
+{
+	// VDU 23, 0, &C0, n
+	putch(23);	 	// vdu_sys
+	putch(0);			// vdu_sys_video
+	putch(0xC0);	// logical coords mode VDP_LOGICALCOORDS
+	putch(n);			// mode (0 = off, >0 = on)
+}
+
 void vdp_clearGraphics()
 {
+	// VDU 16   (CLG)
     putch(16);    
+}
+
+// JH 2023-10-23
+void vdp_graphicsViewport(unsigned int left, unsigned int bottom, unsigned int right, unsigned int top) {
+	// VDU 24, left, bottom, right, top (words) 
+	putch(24);			// 0x18
+	write16bit(left);
+	write16bit(bottom);
+	write16bit(right);
+	write16bit(top);
+}
+
+// JH 2023-10-23
+void vdp_resetViewports() {
+	// VDU 26
+	putch(26);		// 0x1A
 }
 
 void vdp_plotColour(unsigned char colorindex)
 {
-    putch(18); // GCOL
+	putch(18); // GCOL
     putch(1);
 	putch(colorindex);
 }
@@ -117,7 +152,8 @@ void vdp_plotLineTo(unsigned int x, unsigned int y)
 
 void vdp_plotPoint(unsigned int x, unsigned int y)
 {
-	vdp_plot(0x40,x,y);
+	//vdp_plot(0x40,x,y);
+	vdp_plot(0x45,x,y);
 }
 
 void vdp_plotTriangle(unsigned int x, unsigned int y)
@@ -127,12 +163,19 @@ void vdp_plotTriangle(unsigned int x, unsigned int y)
 
 void vdp_plotCircleRadius(unsigned int r)
 {
-	vdp_plot(0x90,r,0);
+	//vdp_plot(0x90,r,0);
+	vdp_plot(0x91,r,0);
 }
 
 void vdp_plotCircleCircumference(unsigned int x, unsigned int y)
 {
 	vdp_plot(0x95,x,y);
+}
+
+// JH 2023-10-23
+void vdp_plotFilledRectangle(unsigned int x, unsigned int y)
+{
+	vdp_plot(0x61,x,y);
 }
 
 void vdp_plotSetOrigin(unsigned int x, unsigned int y)
