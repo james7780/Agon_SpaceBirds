@@ -148,6 +148,7 @@ $(WORKDIR_ESCSPACE)\main.obj :  \
             $(PRJDIR_ESCSPACE)\sprites\bird_16x12.h  \
             $(PRJDIR_ESCSPACE)\sprites\bird_32x24_shaded.h  \
             $(PRJDIR_ESCSPACE)\sprites\eggs.h  \
+            $(PRJDIR_ESCSPACE)\sprites\explosion100.h  \
             $(PRJDIR_ESCSPACE)\sprites\explosions.h  \
             $(PRJDIR_ESCSPACE)\sprites\playerShip.h  \
             $(PRJDIR_ESCSPACE)\sprites\title_16x16.h  \

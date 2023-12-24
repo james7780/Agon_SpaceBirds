@@ -26,16 +26,16 @@ UINT8 audio_play(UINT8 channel, UINT8 volume, UINT16 frequency, UINT16 duration)
 {
 	unsigned int delay = 1000;
 
-    putch(23);
-    putch(0);
+	putch(23);
+	putch(0);
 	putch(0x85);
 	putch(channel);
 	putch(0);			// waveform (does not matter)
 	putch(volume);
-    putch(frequency & 0xFF);
-    putch(frequency >> 8);
-    putch(duration & 0xFF);
-    putch(duration >> 8);
+	putch(frequency & 0xFF);
+	putch(frequency >> 8);
+	putch(duration & 0xFF);
+	putch(duration >> 8);
 
 	// wait for VDP to process and return status
 	while (delay--);

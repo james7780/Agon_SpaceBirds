@@ -30,6 +30,14 @@
 //    - Enemy bullet speed increases
 //    - Enemies start shooting bullets at an angle
 
+// TODO:
+// - Lives display
+// - Extra life every 10000 ?
+// - Particle explosion when player hit
+// - Boss battle
+// - Custom font
+// - Better sound (1.04 engine)
+
 #include <stdio.h>
 //#include <ctype.h>
 #include <stdlib.h>
@@ -49,8 +57,8 @@
 #include "sprites/title_16x16.h"
 
 
-#define SCREEN_WIDTH	320
-#define SCREEN_HEIGHT	200
+#define SCREEN_WIDTH		320
+#define SCREEN_HEIGHT	240
 
 #define MAX_SPRITES		32
 //#define BITMAP_WIDTH		16
@@ -64,6 +72,7 @@
 
 #define MAX_BOMBDROPCHANCE	100				// Chance of any enemy dropping a bullet every frame (n/65536)
 
+#define FREE_LIFE_INTERVAL 1000
 
 // Bitmaps ids
 enum {
@@ -222,9 +231,11 @@ const UINT16 PointsPerType[8] = {
 
 // Global Variables (oooh!)
 int bombDropChance = 40;				// 40 / 65536 chance
+UINT8 lives = 3;
 UINT16 score = 0;
 int hiscore = 0;
 
+// Get random number between 0 and 255
 UINT8 rand255()
 {
 	return (rand() & 0xFF);
@@ -303,11 +314,40 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
 }
 
+
+// Redraw the lives display
+void UpdateLivesDisplay()
+{
+	vdp_cursorGoto(15, 0);
+	printf("LIFE %u", lives);
+}
+
+// Add to score, award extra life if necessary
+void AddScore(unsigned int amount)
+{
+	unsigned int extraLifeBefore = score / FREE_LIFE_INTERVAL;
+	score += amount;
+	// If going over a 5000-point boundary, award an extra life
+	if ((score / FREE_LIFE_INTERVAL) > extraLifeBefore)
+		{
+		// Play extra life sound
+		audio_play(1, 100, 500, 1000);
+		lives++;
+		UpdateLivesDisplay();
+		}
+}
+
 // Redraw the score display
-void UpdateScore()
+void UpdateScoreDisplay()
 {
 	vdp_cursorGoto(0, 0);
-	printf("SCORE: %u", score);
+	printf("SCORE %u", score);
+}
+
+void UpdateLevelDisplay(UINT8 level)
+{
+	vdp_cursorGoto(30, 0);
+	printf("LEVEL %u  ", level + 1);
 }
 
 // Show the title sequence
@@ -368,7 +408,7 @@ void DoTitle()
 			{
 			vdp_scroll(0, 3, 1);
 			vdp_plotColour(rand255() & 0x0F);
-			vdp_plotPoint(rand255(), 0);
+			vdp_plotPoint(rand() % SCREEN_WIDTH, SCREEN_HEIGHT - 1);
 			for (i = 0; i < TITLE_FRAME_COUNT; i++)
 				objects[i].y--;
 			startCount--;
@@ -858,13 +898,32 @@ void UpdatePlayerBullet()
 					vdp_spriteHide(PLAYERBULLET);
 					// Update the score display
 					//score += PointsPerType[objects[n].type];		// Add to score, depending on enemy type we shot
-					score += (objects[n].type * 10);		// Add to score, depending on enemy type we shot
-					UpdateScore();
+					AddScore(objects[n].type * 10);		// Add to score, depending on enemy type we shot
+					UpdateScoreDisplay();
 					}
 				}
 			}
 		}
 
+}
+
+// Level intermission - Scroll screen down and fill with stars
+void LevelIntermission()
+{
+	UINT8 n;
+
+	// Hide all extraneous sprites besides player
+	for (n = 1; n <= LASTENEMYID; n++)
+		vdp_spriteHide(n);
+	vdp_spriteRefresh();
+
+	for (n = 0; n < SCREEN_HEIGHT; n++)
+		{
+		waitvblank();
+		vdp_scroll(0, 2, 1);
+		vdp_plotColour(rand255() & 0x0F);
+		vdp_plotPoint(rand() % SCREEN_WIDTH, 1);			// plot coordinates!
+		}
 }
 
 /// Update player movement, check for player fire
@@ -914,27 +973,14 @@ UINT8 PlayLevel(UINT8 level)
 	UINT8 keycode, stick, flags;
 	UINT16 t;
 
-	// Level intermission - Scroll screen and fill with stars
+	// Level intermission - Scroll screen down and fill with stars
 	if (level > 0)
-		{
-		// Hide all extraneous sprites besides player
-		for (n = 1; n <= LASTENEMYID; n++)
-			vdp_spriteHide(n);
-		vdp_spriteRefresh();
-
-		for (n = 0; n < SCREEN_HEIGHT; n++)
-			{
-			waitvblank();
-			vdp_scroll(0, 2, 1);
-			vdp_plotColour(rand255() & 0x0F);
-			vdp_plotPoint(rand255(), 239);			// plot coordinates!
-			}
-		}
+		LevelIntermission();
 
 	// Show current level and score display
-	vdp_cursorGoto(30, 0);
-	printf("Level: %u   ", level + 1);
-	UpdateScore();
+	UpdateLevelDisplay(level);
+	UpdateScoreDisplay();
+	UpdateLivesDisplay();
 
 	//printf("Setting up sprites...\n\r");
 	SetupSprites(level);
@@ -1027,9 +1073,9 @@ UINT8 PlayLevel(UINT8 level)
 
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
-int main(int argc, char * argv[]) {
+int main(int argc, char * argv[])
+{
 	UINT16 i;
-	UINT8 lives = 3;
 	UINT8 level = 0;
 	UINT8 levelEndState = 0;
 
@@ -1073,37 +1119,7 @@ int main(int argc, char * argv[]) {
 	//    1. *FX19    (wait for VSYNC)
 	//    2. Refresh (VDU 23, 27, 15)
 	
-/* 	vdp_spriteSelect(0);
-	vdp_spriteClearFramesSelected();
-	vdp_spriteAddFrameSelected(0);
-	vdp_spriteShowSelected();
-	vdp_spriteActivateTotal(1);
-	
-	vdp_spriteSelect(0);
-	vdp_spriteMoveToSelected(100, 100); */
-
-/*
-	vdp_spriteClearFrames(0);
-	vdp_spriteClearFrames(1);
-	vdp_spriteClearFrames(2);
-	vdp_spriteClearFrames(3);
-	vdp_spriteAddFrame(0, 0);			// player
-	vdp_spriteAddFrame(1, 1);			// player bullet
-	vdp_spriteAddFrame(2, 2);			// ufo frame 0
-	vdp_spriteAddFrame(2, 3);			// ufo frame 1
-	vdp_spriteAddFrame(2, 4);			// ufo frame 2
-	vdp_spriteAddFrame(3, 5);			// ufo bullet
-
-	vdp_spriteMoveTo(0, 100, 100);
-	vdp_spriteMoveTo(2, 140, 140);
-
-	vdp_spriteSelect(0);
-	vdp_spriteSetFrameSelected(0);
-	vdp_spriteMoveToSelected(100, 100);
-	
-	vdp_spriteActivateTotal(3);
-*/
-
+	lives = 3;							// Is possible to get extra lives
 	score = 0;
 	while (lives > 0)
 		{
