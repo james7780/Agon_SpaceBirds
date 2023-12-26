@@ -331,7 +331,7 @@ void AddScore(unsigned int amount)
 	if ((score / FREE_LIFE_INTERVAL) > extraLifeBefore)
 		{
 		// Play extra life sound
-		audio_play(1, 100, 500, 1000);
+		audio_playNote(1, 100, 500, 1000);
 		lives++;
 		UpdateLivesDisplay();
 		}
@@ -592,7 +592,7 @@ void DropEnemyBullet(OBJECT *pParentObject)
 		if (ST_INACTIVE == pBulletObject->state)
 			{
 			// Set up new enemy bullet 
-			audio_play(0, 75, 1024, 100);
+			audio_playNote(0, 75, 1024, 100);
 			pBulletObject->state = ST_ACTIVE;
 			pBulletObject->x = (BIGBIRD == pParentObject->type) ? pParentObject->x + 8 : pParentObject->x;
 			pBulletObject->y = pParentObject->y + 16;
@@ -624,7 +624,7 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 			if (abs(pObject->x - objects[PLAYER].x) < 9)
 				{
 				// Kill the player
-				audio_play(1, 120, 70, 666);
+				audio_playNote(1, 120, 70, 666);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
 
@@ -789,7 +789,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 					if (ST_INACTIVE == pEnemyObject->state)
 						{
 						// Set up new enemy bird, going right
-						audio_play(0, 75, 2000, 300);
+						audio_playNote(0, 75, 2000, 300);
 						pEnemyObject->type = BIRD;
 						pEnemyObject->state = ST_MOVERANDOM;
 						pEnemyObject->x = pObject->x;
@@ -841,7 +841,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			if (abs(pObject->x + i - objects[PLAYER].x) <= d)
 				{
 				// Kill the player
-				audio_play(1, 120, 70, 666);
+				audio_playNote(1, 120, 70, 666);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
 				}
@@ -888,7 +888,7 @@ void UpdatePlayerBullet()
 				if (yhit)
 					{
 					// Kill the enemy
-					audio_play(1, 100, 75, 250);
+					audio_playNote(1, 100, 75, 250);
 					objects[n].state = ST_DYING;			// Start dying animation
 					objects[n].counter = 0;
 					objects[n].frame = (BIGBIRD == objects[n].type) ? 30 : 22;
@@ -952,7 +952,7 @@ void UpdatePlayer(UINT8 keycode)
 	if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
 		{
 		// Fire bullet 
-		audio_play(0, 100, 880, 100);
+		audio_playNote(0, 100, 880, 100);
 		objects[PLAYERBULLET].state = ST_ACTIVE;
 		objects[PLAYERBULLET].x = objects[PLAYER].x;
 		objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
@@ -1041,7 +1041,12 @@ UINT8 PlayLevel(UINT8 level)
 		//keycode = getsysvar_vkeydown();
 		//printf("%d\n\r", keycode);
 		if (27 == keycode)
+			{
+			// Exit game if Esc pressed
+			endState = 1;
+			lives = 1;
 			break;
+			}
 
 		// Move player (if alive)
 		if (ST_ACTIVE == objects[PLAYER].state)
@@ -1083,6 +1088,8 @@ int main(int argc, char * argv[])
 	vdp_cursorDisable();
 	vdp_cls();
 	vdp_setLogicalCoords(0); 		// Disable BBC "logical coords" (ie: use actual pixel coords)
+
+	audio_setWaveform(0, 1);		// Sawtooth on channel 0
 
 	// Set GPIO port C as input (mode 2)
 //	printf("Setting up GPIO port C for joystick...\n\r");
@@ -1141,9 +1148,8 @@ int main(int argc, char * argv[])
 
 	vdp_cursorEnable();
 	
-//	vdp_mode(1);
-
-	vdp_cursorGoto(0, 22);
+	vdp_spriteActivateTotal(0);
+	vdp_spriteRefresh();
  
 	return 0;
 }
