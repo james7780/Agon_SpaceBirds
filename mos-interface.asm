@@ -15,6 +15,8 @@
 ; 18/04/2023:		_mos_flseek fix
 ; 19/04/2023:		_mos_getfil added
 
+; 27/12/2023 JH		Added _moskbmap (to retrieve 1.04 keyboard bitmap data)
+
 	.include "mos_api.inc"
 
 	XDEF _putch
@@ -50,6 +52,8 @@
 	XDEF _mos_fwrite
 	XDEF _mos_flseek
 	XDEF _mos_getfil
+; JH
+	XDEF _mos_kbmap
 
 	XDEF _getsysvar_vpd_pflags
 	XDEF _getsysvar_keyascii
@@ -632,6 +636,15 @@ _mos_getfil:
 	ld a,	mos_getfil
 	rst.lil	08h			; Get a pointer to the relevant FIL struct
 	ld		sp,ix
+	pop		ix
+	ret
+
+; JH - 1.04
+_mos_kbmap:
+	push	ix
+	ld a,	mos_getkbmap
+	rst.lil	08h			; Fetch a pointer to the keyboard map
+	ld 		hl, ix
 	pop		ix
 	ret
 

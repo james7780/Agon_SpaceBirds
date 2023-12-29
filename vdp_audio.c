@@ -1,9 +1,8 @@
-// vdp_audio
 /*
- * Title:			AGON VDPAUDIO - VDP audio c interface implementation
- * Author::		James Higgs
- * Created:		2023-05-06
- * Last Updated:	2023-12-26
+ * Title:         AGON VDPAUDIO - VDP audio C interface implementation
+ * Author:        James Higgs
+ * Created:       2023-05-06
+ * Last Updated:  2023-12-26
  * 
  * Modinfo:
  * 2023-05-06:		Initial version
@@ -12,36 +11,7 @@
 
 #include <defines.h>
 #include "mos-interface.h"
-//#include "stdint.h"
 
-// Notes:
-// VDU 23, 0, 0x85, channel8, wave8, vol8, freq16, duration16
-// vdu_sys_audio: void vdu_sys_audio() (
-//	byte channel			// 0 to 2 (3 channels)
-//	byte waveform			// ignored! (tri wave or square wave only)
-//	byte volume
-//	word frequency
-//	word duration
-//
-//UINT8 audio_play(UINT8 channel, UINT8 volume, UINT16 frequency, UINT16 duration)
-//{
-//	unsigned int delay = 1000;
-//
-//	putch(23);
-//	putch(0);
-//	putch(0x85);
-//	putch(channel);
-//	putch(0);			// waveform (does not matter)
-//	putch(volume);
-//	putch(frequency & 0xFF);
-//	putch(frequency >> 8);
-//	putch(duration & 0xFF);
-//	putch(duration >> 8);
-//
-//	// wait for VDP to process and return status
-//	while (delay--);
-//	return getsysvar_audioSuccess();
-//}
 
 // MOS/VDP 1.04 audio
 // https://github.com/breakintoprogram/agon-docs/wiki/VDP-%E2%80%90-Enhanced-Audio-API
@@ -65,6 +35,9 @@ enum {
 // Command 0 - Play note
 UINT8 audio_playNote(UINT8 channel, UINT8 volume, UINT16 frequency, UINT16 duration)
 {
+	// Notes:
+	// VDU 23, 0, 0x85, channel8, 0, vol8, freq16, duration16
+
 	unsigned int delay = 1000;
 
 	putch(23);

@@ -10,9 +10,7 @@
  */
  
 // VDP functions needed:
-// - Read state of any key on the keyboard
 // - Query sprite collisions (from fabGL)
-// - Better sound functions! (Different waveforms, noise, etc)
 
 // Ideas:
 // 1. Big bird splits into 2 when shot
@@ -31,15 +29,12 @@
 //    - Enemies start shooting bullets at an angle
 
 // TODO:
-// - Lives display
-// - Extra life every 10000 ?
 // - Particle explosion when player hit
 // - Boss battle
 // - Custom font
-// - Better sound (1.04 engine)
+// - Better sound (using updated 1.04 engine) - Envelopes, different waveforms
 
 #include <stdio.h>
-//#include <ctype.h>
 #include <stdlib.h>
 #include <math.h>
 #include <gpio.h>				// For joystick
@@ -61,8 +56,6 @@
 #define SCREEN_HEIGHT	240
 
 #define MAX_SPRITES		32
-//#define BITMAP_WIDTH		16
-//#define BITMAP_HEIGHT		16	
 
 #define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
 #define LASTENEMYBULLETID	7
@@ -176,7 +169,6 @@ typedef struct
 	UINT8 type;
 	UINT16 x;
 	UINT16 y;
-	//UINT8 imageId;				// "base" image id
 	UINT8 frame;				// Current frame of animation
 	UINT8 state;				// Current state of this object
 	UINT8 dirn;					// Current direction of the object
@@ -230,10 +222,31 @@ const UINT16 PointsPerType[8] = {
 	};
 
 // Global Variables (oooh!)
+UINT8* g_keyDownMap = NULL;					// Pointer to MOS keyboard key down map
 int bombDropChance = 40;				// 40 / 65536 chance
 UINT8 lives = 3;
 UINT16 score = 0;
 int hiscore = 0;
+
+// Check if a key is pressed in the keydown map (new MOS 1.04 functionality)
+// @param[in] mapIndex	Index of the *byte* to check in the 128-bit key map
+// @param[in] mask			Bit mask for the key we want in the index byte
+BOOL IsKeyPressed(UINT8 mapIndex, UINT8 mask)
+{
+	if (mapIndex > 15)
+		return FALSE;
+
+	if (NULL == g_keyDownMap)
+		{
+		// Get global pointer to MOS keydown map 
+		g_keyDownMap = mos_kbmap();
+		}
+
+	if ((g_keyDownMap[mapIndex] & mask) == mask)
+		return TRUE;
+	else
+		return FALSE;
+}
 
 // Get random number between 0 and 255
 UINT8 rand255()
@@ -399,8 +412,9 @@ void DoTitle()
 
 		vdp_spriteRefresh();
 
-		keycode = getsysvar_keyascii();
-		if (32 == keycode && 255 == startCount)
+		//keycode = getsysvar_keyascii();
+		//if (32 == keycode && 255 == startCount)
+		if (255 == startCount && IsKeyPressed(0xC, 0x4))
 			startCount = SCREEN_HEIGHT;
 
 		// Scroll screen up after we have pressed start
@@ -927,16 +941,15 @@ void LevelIntermission()
 }
 
 /// Update player movement, check for player fire
-void UpdatePlayer(UINT8 keycode)
+void UpdatePlayer()
 {
 	UINT8 stick;
 
-	// Move via keyboard (janky)
-	if (8 == keycode && objects[PLAYER].x > 0)
+	// Move via keyboard
+	if (IsKeyPressed(0x3, 0x2) && objects[PLAYER].x > 0)
 		objects[PLAYER].x -= 2;
-	else if (21 == keycode && objects[PLAYER].x < (SCREEN_WIDTH - 16))
+	else if (IsKeyPressed(0xF, 0x2) && objects[PLAYER].x < (SCREEN_WIDTH - 16))
 		objects[PLAYER].x += 2;
-
 
 	// Read joystick and update player position and sprite
 	GETDR_PORTC(stick);
@@ -949,7 +962,7 @@ void UpdatePlayer(UINT8 keycode)
 
 	vdp_spriteMoveTo(PLAYER, objects[PLAYER].x, objects[PLAYER].y);
 
-	if ((0 == (stick & 4) || 32 == keycode) && ST_INACTIVE == objects[PLAYERBULLET].state)
+	if ((0 == (stick & 4) || IsKeyPressed(0xC, 0x4)) && ST_INACTIVE == objects[PLAYERBULLET].state)
 		{
 		// Fire bullet 
 		audio_playNote(0, 100, 880, 100);
@@ -970,7 +983,7 @@ UINT8 PlayLevel(UINT8 level)
 	UINT8 endState = 0;
 	UINT8 n;
 	UINT8 numActiveEnemies;
-	UINT8 keycode, stick, flags;
+	UINT8 flags;
 	UINT16 t;
 
 	// Level intermission - Scroll screen down and fill with stars
@@ -1037,10 +1050,7 @@ UINT8 PlayLevel(UINT8 level)
 			}
  */
 			
-		keycode = getsysvar_keyascii();
-		//keycode = getsysvar_vkeydown();
-		//printf("%d\n\r", keycode);
-		if (27 == keycode)
+		if (IsKeyPressed(0xE, 0x1))
 			{
 			// Exit game if Esc pressed
 			endState = 1;
@@ -1051,7 +1061,7 @@ UINT8 PlayLevel(UINT8 level)
 		// Move player (if alive)
 		if (ST_ACTIVE == objects[PLAYER].state)
 			{
-			UpdatePlayer(keycode);
+			UpdatePlayer();
 			}
 		else
 			{
@@ -1102,7 +1112,11 @@ int main(int argc, char * argv[])
 	for(i = 0; i < argc; i++) {
 		printf("- argv[%d]: %s\n\r", i, argv[i]);
 	} */
-	
+
+	// Set up MOS keydown map
+	g_keyDownMap = mos_kbmap();
+	//printf("kbmap: %X\n\r", g_keyDownMap);
+
 	// Upload sprite data to the VDP
 	// Bitmaps 0 to 8 are for player + player bullet
 	printf("Uploading bitmaps...\n\r");

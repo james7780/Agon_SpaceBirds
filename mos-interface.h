@@ -111,6 +111,8 @@ extern UINT16 getsysvar_keydelay();
 extern UINT16 getsysvar_keyrate();
 extern UINT8  getsysvar_keyled();
 
+extern UINT8* getsysvar_rtc();
+
 // MOS API calls
 extern UINT8  mos_load(char *filename, UINT24 address, UINT24 maxsize);
 extern UINT8  mos_save(char *filename, UINT24 address, UINT24 nbytes);
@@ -140,4 +142,7 @@ extern UINT24 mos_fread(UINT8 fh, char *buffer, UINT24 numbytes);
 extern UINT24 mos_fwrite(UINT8 fh, char *buffer, UINT24 numbytes);
 extern UINT8  mos_flseek(UINT8 fh, UINT32 offset);
 extern UINT8* mos_getfil(UINT8 fh);
+
+// JH - 1.04
+extern UINT8* mos_kbmap(void);
 #endif
