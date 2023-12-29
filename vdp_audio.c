@@ -33,6 +33,9 @@ enum {
 };
 
 // Command 0 - Play note
+// volume - 0 to 127
+// freqency - frequency in Hz
+// duration - duration in milliseconds
 UINT8 audio_playNote(UINT8 channel, UINT8 volume, UINT16 frequency, UINT16 duration)
 {
 	// Notes:
@@ -73,6 +76,7 @@ UINT8 audio_status(UINT8 channel)
 }
 
 // Command 2 - Set Volume
+// volume - 0 to 127
 void audio_setVolume(UINT8 channel, UINT8 volume)
 {
 	putch(23);
@@ -84,6 +88,7 @@ void audio_setVolume(UINT8 channel, UINT8 volume)
 }
 
 // Command 3 - Set frequency
+// freqency - frequency in Hz
 void audio_setFreq(UINT8 channel, UINT16 frequency)
 {
 	putch(23);
@@ -96,6 +101,7 @@ void audio_setFreq(UINT8 channel, UINT16 frequency)
 }
 
 // Command 4 - Set waveform
+// waveform - waveform type as per ID's in vdp_audio.h
 void audio_setWaveform(UINT8 channel, INT8 waveform)
 {
 	putch(23);
@@ -153,9 +159,25 @@ UINT8 audio_clearSample(INT8 sampleId)
 }
 
 // Command 6 - Volume envelope
+// attack - attack time in ms
+// decay - decay time in ms
+// sustain - sustain "level" (0 to 127)
+// release - release time in ms
 void audio_setVolumeEnvelope(UINT8 channel, UINT16 attack, UINT16 decay, UINT8 sustain, UINT16 release)
 {
-// TODO
+	putch(23);
+	putch(0);
+	putch(0x85);
+	putch(channel);
+	putch(CMD_VOLUMEENVELOPE);
+	putch(1);							// Env type 1 = ADSR  (type 0 = None)
+	putch(attack & 0xFF);
+	putch(attack >> 8);
+	putch(decay & 0xFF);
+	putch(decay >> 8);
+	putch(sustain);
+	putch(release & 0xFF);
+	putch(release >> 8);
 }
 
 void audio_disableVolumeEnvelope(UINT8 channel)

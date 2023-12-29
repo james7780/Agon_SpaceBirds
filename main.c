@@ -221,6 +221,22 @@ const UINT16 PointsPerType[8] = {
 	0
 	};
 
+// Audio channel allocation:
+// 0 - Player fire
+// 1.- Enemy fire
+// 2 - Player explosion
+// 3 - Enemy explosion
+// 4.- Extra life
+enum {
+	SFX_PLAYERFIRE = 0,
+	SFX_ENEMYFIRE,
+	SFX_PLAYEREXPLODE,
+	SFX_ENEMYEXPLODE,
+	SFX_ENEMYSPLIT,
+	SFX_EXTRALIFE,
+	SFX_COUNT
+};
+
 // Global Variables (oooh!)
 UINT8* g_keyDownMap = NULL;					// Pointer to MOS keyboard key down map
 int bombDropChance = 40;				// 40 / 65536 chance
@@ -327,6 +343,45 @@ void UploadBitmaps()
 	vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
 }
 
+// Setup audio channels
+void SetupAudio()
+{
+	// Channel allocation:
+	// 0 - Player fire
+	// 1.- Enemy fire
+	// 2 - Player explosion
+	// 3 - Enemy explosion
+	// 4.- Extra life
+	UINT8 i;
+
+	// Enable extra audio channels as needed
+	for (i = 3; i < SFX_COUNT; i++)
+		audio_enableChannel(i);
+
+	// Channel 0 - Player fire
+	audio_setWaveform(SFX_PLAYERFIRE, WAVE_SAW);
+	audio_setVolumeEnvelope(SFX_PLAYERFIRE, 20, 200, 64, 50);
+
+	// Channel 1 - Enamy fire
+	audio_setWaveform(SFX_ENEMYFIRE, WAVE_SINE);
+	audio_setVolumeEnvelope(SFX_ENEMYFIRE, 10, 100, 64, 50);
+
+	// Channel 2 - Player explosion
+	audio_setVolumeEnvelope(SFX_PLAYEREXPLODE, 50, 2000, 64, 50);
+	audio_setWaveform(SFX_PLAYEREXPLODE, WAVE_NOISE);
+
+	// Channel 3 - Enemy explosion
+	audio_setVolumeEnvelope(SFX_ENEMYEXPLODE, 20, 200, 64, 50);
+	audio_setWaveform(SFX_ENEMYEXPLODE, WAVE_NOISE);
+
+	// Channel 4 - Enemy split
+	audio_setWaveform(SFX_ENEMYSPLIT, WAVE_TRI);
+	//audio_setVolumeEnvelope(SFX_ENEMYSPLIT, 10, 100, 64, 50);
+
+	// Channel 5 - Extra life
+	audio_setWaveform(SFX_EXTRALIFE, WAVE_SQUARE);
+	audio_setVolumeEnvelope(SFX_EXTRALIFE, 10, 100, 64, 50);
+}
 
 // Redraw the lives display
 void UpdateLivesDisplay()
@@ -344,7 +399,7 @@ void AddScore(unsigned int amount)
 	if ((score / FREE_LIFE_INTERVAL) > extraLifeBefore)
 		{
 		// Play extra life sound
-		audio_playNote(1, 100, 500, 1000);
+		audio_playNote(SFX_EXTRALIFE, 100, 500, 1000);
 		lives++;
 		UpdateLivesDisplay();
 		}
@@ -606,7 +661,7 @@ void DropEnemyBullet(OBJECT *pParentObject)
 		if (ST_INACTIVE == pBulletObject->state)
 			{
 			// Set up new enemy bullet 
-			audio_playNote(0, 75, 1024, 100);
+			audio_playNote(SFX_ENEMYFIRE, 75, 1024, 10);
 			pBulletObject->state = ST_ACTIVE;
 			pBulletObject->x = (BIGBIRD == pParentObject->type) ? pParentObject->x + 8 : pParentObject->x;
 			pBulletObject->y = pParentObject->y + 16;
@@ -638,7 +693,7 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 			if (abs(pObject->x - objects[PLAYER].x) < 9)
 				{
 				// Kill the player
-				audio_playNote(1, 120, 70, 666);
+				audio_playNote(SFX_ENEMYEXPLODE, 120, 70, 10);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
 
@@ -803,7 +858,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 					if (ST_INACTIVE == pEnemyObject->state)
 						{
 						// Set up new enemy bird, going right
-						audio_playNote(0, 75, 2000, 300);
+						audio_playNote(SFX_ENEMYSPLIT, 75, 2000, 300);
 						pEnemyObject->type = BIRD;
 						pEnemyObject->state = ST_MOVERANDOM;
 						pEnemyObject->x = pObject->x;
@@ -855,7 +910,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			if (abs(pObject->x + i - objects[PLAYER].x) <= d)
 				{
 				// Kill the player
-				audio_playNote(1, 120, 70, 666);
+				audio_playNote(SFX_PLAYEREXPLODE, 120, 70, 10);
 				objects[PLAYER].state = ST_DYING;			// Start dying animation
 				objects[PLAYER].counter = 0;
 				}
@@ -902,7 +957,7 @@ void UpdatePlayerBullet()
 				if (yhit)
 					{
 					// Kill the enemy
-					audio_playNote(1, 100, 75, 250);
+					audio_playNote(SFX_ENEMYEXPLODE, 100, 75, 10);
 					objects[n].state = ST_DYING;			// Start dying animation
 					objects[n].counter = 0;
 					objects[n].frame = (BIGBIRD == objects[n].type) ? 30 : 22;
@@ -919,25 +974,6 @@ void UpdatePlayerBullet()
 			}
 		}
 
-}
-
-// Level intermission - Scroll screen down and fill with stars
-void LevelIntermission()
-{
-	UINT8 n;
-
-	// Hide all extraneous sprites besides player
-	for (n = 1; n <= LASTENEMYID; n++)
-		vdp_spriteHide(n);
-	vdp_spriteRefresh();
-
-	for (n = 0; n < SCREEN_HEIGHT; n++)
-		{
-		waitvblank();
-		vdp_scroll(0, 2, 1);
-		vdp_plotColour(rand255() & 0x0F);
-		vdp_plotPoint(rand() % SCREEN_WIDTH, 1);			// plot coordinates!
-		}
 }
 
 /// Update player movement, check for player fire
@@ -964,8 +1000,8 @@ void UpdatePlayer()
 
 	if ((0 == (stick & 4) || IsKeyPressed(0xC, 0x4)) && ST_INACTIVE == objects[PLAYERBULLET].state)
 		{
-		// Fire bullet 
-		audio_playNote(0, 100, 880, 100);
+		// Fire bullet (channel 0) 
+		audio_playNote(SFX_PLAYERFIRE, 100, 880, 10);						// Will play duration of attack + decay
 		objects[PLAYERBULLET].state = ST_ACTIVE;
 		objects[PLAYERBULLET].x = objects[PLAYER].x;
 		objects[PLAYERBULLET].y = objects[PLAYER].y - 16;
@@ -973,6 +1009,25 @@ void UpdatePlayer()
 		vdp_spriteShow(PLAYERBULLET);
 		}
 
+}
+
+// Level intermission - Scroll screen down and fill with stars
+void LevelIntermission()
+{
+	UINT8 n;
+
+	// Hide all extraneous sprites besides player
+	for (n = 1; n <= LASTENEMYID; n++)
+		vdp_spriteHide(n);
+	vdp_spriteRefresh();
+
+	for (n = 0; n < SCREEN_HEIGHT; n++)
+		{
+		waitvblank();
+		vdp_scroll(0, 2, 1);
+		vdp_plotColour(rand255() & 0x0F);
+		vdp_plotPoint(rand() % SCREEN_WIDTH, 1);			// plot coordinates!
+		}
 }
 
 /// Play a level
@@ -1099,7 +1154,8 @@ int main(int argc, char * argv[])
 	vdp_cls();
 	vdp_setLogicalCoords(0); 		// Disable BBC "logical coords" (ie: use actual pixel coords)
 
-	audio_setWaveform(0, 1);		// Sawtooth on channel 0
+	// Setup audio channels for sound effects
+	SetupAudio();
 
 	// Set GPIO port C as input (mode 2)
 //	printf("Setting up GPIO port C for joystick...\n\r");

@@ -31,6 +31,16 @@ void audio_setVolume(UINT8 channel, UINT8 volume);
 // Command 3 - Set frequency\
 void audio_setFreq(UINT8 channel, UINT16 frequency);
 
+// Waveform IDs
+enum {
+	WAVE_SQUARE = 0,
+	WAVE_TRI,
+	WAVE_SAW,
+	WAVE_SINE,
+	WAVE_NOISE,
+	WAVE_VICNOISE
+};
+
 // Command 4 - Set waveform
 // Value  Waveform
 // 0      Square wave
