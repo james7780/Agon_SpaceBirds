@@ -12,10 +12,18 @@
 // VDP functions needed:
 // - Query sprite collisions (from fabGL)
 
+// TODO
+// - Paletted bitmap upload (convert 4-bit image data to 24-bit when uploading)
+// - Player explode particle effects
+// - Small bird to big bird transition
+// - Big bird split transition
+
 // Ideas:
 // 1. Big bird splits into 2 when shot
 // 2. Dead birds drop from the sky (with flames on wings), can kill you 
 // 3. If you clip a bird's wing, it drops down with erratic side movement
+// 4. Birds have random "divebomb" behaviour
+// 
 
 // Levels (affects SetupSprites() and UpdateEnemies()):
 // 1. Eggs to smal birds
@@ -43,14 +51,13 @@
 #include "vdp_audio.h"
 
 #include "sprites/ufos.h"				// for bullets
-#include "sprites/playerShip.h"
-#include "sprites/explosions.h"
-#include "sprites/explosion100.h"		// sideways explosion for big birds 
-#include "sprites/eggs.h"
-#include "sprites/bird_16x12.h"
-#include "sprites/bird_32x24_shaded.h"
-#include "sprites/title_16x16.h"
-
+#include "sprites/playerShip16.h"					// Paletted player ship data (1/8th size)
+#include "sprites/explosions16.h"					// 4-bit paletted version
+#include "sprites/explosions100.h"				// sideways explosion for big birds  (now 4-bit palletised)
+#include "sprites/eggs16.h"								// 4-bit paletted
+#include "sprites/bird_16x12.h"						// now 4-bit paletted
+#include "sprites/bird_32x24_shaded.h"		// now 4-bit paletted
+#include "sprites/title16_16x16.h"				// 4-bit paletted version
 
 #define SCREEN_WIDTH		320
 #define SCREEN_HEIGHT	240
@@ -62,6 +69,12 @@
 #define FIRSTENEMYID		8				// index of the first enemy in the object array
 #define MAX_ENEMIES		12
 #define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES - 1)	// index of the last enemy in the object array
+
+#define EGG_STARTFRAME		0
+#define SBIRD_STARTFRAME	8
+#define BBIRD_STARTFRAME	15
+#define EXPLOSION_STARTFRAME	23
+#define EXPLOSION100_STARTFRAME 32
 
 #define MAX_BOMBDROPCHANCE	100				// Chance of any enemy dropping a bullet every frame (n/65536)
 
@@ -87,15 +100,16 @@ enum {
 	BID_EXPLOSION6,
 	BID_EXPLOSION7,
 
-	BID_EGGS0,				// 16 to 22 - Eggs id's			
+	BID_EGGS0,				// 16 to 23 - Eggs id's			
 	BID_EGGS1,
 	BID_EGGS2,
 	BID_EGGS3,
 	BID_EGGS4,
 	BID_EGGS5,
 	BID_EGGS6,
+	BID_EGGS7,
 	
-	BID_SBIRD0,				// 23 to 30 - Small bird id's			
+	BID_SBIRD0,				// 24 to 31 - Small bird id's			
 	BID_SBIRD1,				
 	BID_SBIRD2,				
 	BID_SBIRD3,				
@@ -104,7 +118,7 @@ enum {
 	BID_SBIRD6,				
 	BID_ENEMYBULLET,				
 
-	BID_BBIRD0,				// 31 to 37 - Big bird id's			
+	BID_BBIRD0,				// 32 to 38 - Big bird id's			
 	BID_BBIRD1,				
 	BID_BBIRD2,				
 	BID_BBIRD3,				
@@ -112,7 +126,7 @@ enum {
 	BID_BBIRD5,				
 	BID_BBIRD6,
 
-	BID_TITLE0,				// 38 to 46 - Title character sprites
+	BID_TITLE0,				// 39 to 47 - Title character sprites
 	BID_TITLE1,
 	BID_TITLE2,
 	BID_TITLE3,
@@ -122,7 +136,7 @@ enum {
 	BID_TITLE7,
 	BID_TITLE8,
 
-	BID_EXPLOSION100_0,			// 47 to 55 - Explosion100 id's
+	BID_EXPLOSION100_0,			// 48 to 56 - Explosion100 id's
 	BID_EXPLOSION100_1,
 	BID_EXPLOSION100_2,
 	BID_EXPLOSION100_3,
@@ -148,9 +162,11 @@ enum {
 	ST_INACTIVE = 0,
 	ST_ACTIVE,
 	ST_EGG,
+	ST_HATCHING,
 	ST_MOVELEFT,
 	ST_MOVERIGHT,
 	ST_MOVERANDOM,
+	ST_SPLITTING,
 	ST_DYING 
 };
 
@@ -270,77 +286,131 @@ UINT8 rand255()
 	return (rand() & 0xFF);
 }
 
+// Upload 
 // Upload bitmap and sprite data to the VDP
 void UploadBitmaps()
 {
 	// Player and player bullet uses bitmaps 0 to 7
-	vdp_bitmapSendData(BID_PLAYER0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
-	vdp_bitmapSendData(BID_PLAYER1, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[1]);		// player exploding 1
-	vdp_bitmapSendData(BID_PLAYER2, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[2]);		// player exploding 2
-	vdp_bitmapSendData(BID_PLAYER3, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[3]);		// player exploding 3
+	//vdp_bitmapSendData(BID_PLAYER0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0]);
+	//vdp_bitmapSendData(BID_PLAYER1, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[1]);		// player exploding 1
+	//vdp_bitmapSendData(BID_PLAYER2, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[2]);		// player exploding 2
+	//vdp_bitmapSendData(BID_PLAYER3, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[3]);		// player exploding 3
+	vdp_bitmapSendData16(BID_PLAYER0, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[0], playerDataPalette);
+	vdp_bitmapSendData16(BID_PLAYER1, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[1], playerDataPalette);		// player exploding 1
+	vdp_bitmapSendData16(BID_PLAYER2, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[2], playerDataPalette);		// player exploding 2
+	vdp_bitmapSendData16(BID_PLAYER3, PLAYER_WIDTH, PLAYER_HEIGHT, playerData[3], playerDataPalette);		// player exploding 3
+
 	vdp_bitmapSendData(BID_PLAYERBULLET, 16, 16, playerBulletData);	// player bullet
-	
 	// Explosions use bitmaps 8 to 15
-	vdp_bitmapSendData(BID_EXPLOSION0, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[0]);
-	vdp_bitmapSendData(BID_EXPLOSION1, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[1]);
-	vdp_bitmapSendData(BID_EXPLOSION2, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[2]);
-	vdp_bitmapSendData(BID_EXPLOSION3, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[3]);
-	vdp_bitmapSendData(BID_EXPLOSION4, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[4]);
-	vdp_bitmapSendData(BID_EXPLOSION5, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[5]);
-	vdp_bitmapSendData(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6]);
-	vdp_bitmapSendData(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7]);
+	//vdp_bitmapSendData(BID_EXPLOSION0, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[0]);
+	//vdp_bitmapSendData(BID_EXPLOSION1, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[1]);
+	//vdp_bitmapSendData(BID_EXPLOSION2, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[2]);
+	//vdp_bitmapSendData(BID_EXPLOSION3, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[3]);
+	//vdp_bitmapSendData(BID_EXPLOSION4, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[4]);
+	//vdp_bitmapSendData(BID_EXPLOSION5, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[5]);
+	//vdp_bitmapSendData(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6]);
+	//vdp_bitmapSendData(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7]);
+	vdp_bitmapSendData16(BID_EXPLOSION0, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[0], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION1, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[1], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION2, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[2], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION3, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[3], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION4, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[4], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION5, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[5], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION6, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[6], explosionPalette);
+	vdp_bitmapSendData16(BID_EXPLOSION7, EXPLOSION_WIDTH, EXPLOSION_HEIGHT, explosionData[7], explosionPalette);
 
 	// Eggs use bitmaps 16 to 22
-	vdp_bitmapSendData(BID_EGGS0, EGGS_WIDTH, EGGS_HEIGHT, eggsData[0]);
-	vdp_bitmapSendData(BID_EGGS1, EGGS_WIDTH, EGGS_HEIGHT, eggsData[1]);
-	vdp_bitmapSendData(BID_EGGS2, EGGS_WIDTH, EGGS_HEIGHT, eggsData[2]);
-	vdp_bitmapSendData(BID_EGGS3, EGGS_WIDTH, EGGS_HEIGHT, eggsData[3]);
-	vdp_bitmapSendData(BID_EGGS4, EGGS_WIDTH, EGGS_HEIGHT, eggsData[4]);
-	vdp_bitmapSendData(BID_EGGS5, EGGS_WIDTH, EGGS_HEIGHT, eggsData[5]);
-	vdp_bitmapSendData(BID_EGGS6, EGGS_WIDTH, EGGS_HEIGHT, eggsData[6]);
+	//vdp_bitmapSendData(BID_EGGS0, EGGS_WIDTH, EGGS_HEIGHT, eggsData[0]);
+	//vdp_bitmapSendData(BID_EGGS1, EGGS_WIDTH, EGGS_HEIGHT, eggsData[1]);
+	//vdp_bitmapSendData(BID_EGGS2, EGGS_WIDTH, EGGS_HEIGHT, eggsData[2]);
+	//vdp_bitmapSendData(BID_EGGS3, EGGS_WIDTH, EGGS_HEIGHT, eggsData[3]);
+	//vdp_bitmapSendData(BID_EGGS4, EGGS_WIDTH, EGGS_HEIGHT, eggsData[4]);
+	//vdp_bitmapSendData(BID_EGGS5, EGGS_WIDTH, EGGS_HEIGHT, eggsData[5]);
+	//vdp_bitmapSendData(BID_EGGS6, EGGS_WIDTH, EGGS_HEIGHT, eggsData[6]);
+	vdp_bitmapSendData16(BID_EGGS0, EGGS_WIDTH, EGGS_HEIGHT, eggsData[0], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS1, EGGS_WIDTH, EGGS_HEIGHT, eggsData[1], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS2, EGGS_WIDTH, EGGS_HEIGHT, eggsData[2], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS3, EGGS_WIDTH, EGGS_HEIGHT, eggsData[3], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS4, EGGS_WIDTH, EGGS_HEIGHT, eggsData[4], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS5, EGGS_WIDTH, EGGS_HEIGHT, eggsData[5], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS6, EGGS_WIDTH, EGGS_HEIGHT, eggsData[6], eggsPalette);
+	vdp_bitmapSendData16(BID_EGGS7, EGGS_WIDTH, EGGS_HEIGHT, eggsData[7], eggsPalette);
 
 	// Small enemy birds use bitmaps 23 to 29
-	vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
+/* 	vdp_bitmapSendData(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0]);
 	vdp_bitmapSendData(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1]);
 	vdp_bitmapSendData(BID_SBIRD2, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[2]);
 	vdp_bitmapSendData(BID_SBIRD3, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[3]);
 	vdp_bitmapSendData(BID_SBIRD4, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[4]);
 	vdp_bitmapSendData(BID_SBIRD5, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[5]);
-	vdp_bitmapSendData(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6]);
+	vdp_bitmapSendData(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6]); */
+	vdp_bitmapSendData16(BID_SBIRD0, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[0], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD1, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[1], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD2, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[2], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD3, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[3], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD4, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[4], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD5, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[5], sbirdPalette);
+	vdp_bitmapSendData16(BID_SBIRD6, SBIRD_WIDTH, SBIRD_HEIGHT, sbirdData[6], sbirdPalette);
 
 	// Enemy bullet at bitmap 30
 	vdp_bitmapSendData(BID_ENEMYBULLET, 16, 16, enemyBulletData);
 	
 	// Big enemy birds use bitmaps 31 to 37
-	vdp_bitmapSendData(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0]);
+/* 	vdp_bitmapSendData(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0]);
 	vdp_bitmapSendData(BID_BBIRD1, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[1]);
 	vdp_bitmapSendData(BID_BBIRD2, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[2]);
 	vdp_bitmapSendData(BID_BBIRD3, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[3]);
 	vdp_bitmapSendData(BID_BBIRD4, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[4]);
 	vdp_bitmapSendData(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5]);
 	vdp_bitmapSendData(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6]);
+ */
+	vdp_bitmapSendData16(BID_BBIRD0, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[0], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD1, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[1], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD2, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[2], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD3, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[3], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD4, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[4], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD5, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[5], bbirdPalette);
+	vdp_bitmapSendData16(BID_BBIRD6, BBIRD_WIDTH, BBIRD_HEIGHT, bbirdData[6], bbirdPalette);
 
 	// Title sprite characters use bitmaps 38 to 46
-	vdp_bitmapSendData(BID_TITLE0, TITLE_WIDTH, TITLE_HEIGHT, titleData[0]);
-	vdp_bitmapSendData(BID_TITLE1, TITLE_WIDTH, TITLE_HEIGHT, titleData[1]);
-	vdp_bitmapSendData(BID_TITLE2, TITLE_WIDTH, TITLE_HEIGHT, titleData[2]);
-	vdp_bitmapSendData(BID_TITLE3, TITLE_WIDTH, TITLE_HEIGHT, titleData[3]);
-	vdp_bitmapSendData(BID_TITLE4, TITLE_WIDTH, TITLE_HEIGHT, titleData[4]);
-	vdp_bitmapSendData(BID_TITLE5, TITLE_WIDTH, TITLE_HEIGHT, titleData[5]);
-	vdp_bitmapSendData(BID_TITLE6, TITLE_WIDTH, TITLE_HEIGHT, titleData[6]);
-	vdp_bitmapSendData(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7]);
-	vdp_bitmapSendData(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8]);
+	//vdp_bitmapSendData(BID_TITLE0, TITLE_WIDTH, TITLE_HEIGHT, titleData[0]);
+	//vdp_bitmapSendData(BID_TITLE1, TITLE_WIDTH, TITLE_HEIGHT, titleData[1]);
+	//vdp_bitmapSendData(BID_TITLE2, TITLE_WIDTH, TITLE_HEIGHT, titleData[2]);
+	//vdp_bitmapSendData(BID_TITLE3, TITLE_WIDTH, TITLE_HEIGHT, titleData[3]);
+	//vdp_bitmapSendData(BID_TITLE4, TITLE_WIDTH, TITLE_HEIGHT, titleData[4]);
+	//vdp_bitmapSendData(BID_TITLE5, TITLE_WIDTH, TITLE_HEIGHT, titleData[5]);
+	//vdp_bitmapSendData(BID_TITLE6, TITLE_WIDTH, TITLE_HEIGHT, titleData[6]);
+	//vdp_bitmapSendData(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7]);
+	//vdp_bitmapSendData(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8]);
+	vdp_bitmapSendData16(BID_TITLE0, TITLE_WIDTH, TITLE_HEIGHT, titleData[0], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE1, TITLE_WIDTH, TITLE_HEIGHT, titleData[1], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE2, TITLE_WIDTH, TITLE_HEIGHT, titleData[2], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE3, TITLE_WIDTH, TITLE_HEIGHT, titleData[3], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE4, TITLE_WIDTH, TITLE_HEIGHT, titleData[4], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE5, TITLE_WIDTH, TITLE_HEIGHT, titleData[5], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE6, TITLE_WIDTH, TITLE_HEIGHT, titleData[6], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE7, TITLE_WIDTH, TITLE_HEIGHT, titleData[7], titlePalette);
+	vdp_bitmapSendData16(BID_TITLE8, TITLE_WIDTH, TITLE_HEIGHT, titleData[8], titlePalette);
 
 	// Explosion100 sprite uses bitmaps 38 to 46
-	vdp_bitmapSendData(BID_EXPLOSION100_0, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[0]);
-	vdp_bitmapSendData(BID_EXPLOSION100_1, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[1]);
-	vdp_bitmapSendData(BID_EXPLOSION100_2, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[2]);
-	vdp_bitmapSendData(BID_EXPLOSION100_3, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[3]);
-	vdp_bitmapSendData(BID_EXPLOSION100_4, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[4]);
-	vdp_bitmapSendData(BID_EXPLOSION100_5, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[5]);
-	vdp_bitmapSendData(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6]);
-	vdp_bitmapSendData(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7]);
-	vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_0, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[0]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_1, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[1]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_2, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[2]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_3, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[3]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_4, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[4]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_5, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[5]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7]);
+	//vdp_bitmapSendData(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8]);
+	vdp_bitmapSendData16(BID_EXPLOSION100_0, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[0], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_1, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[1], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_2, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[2], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_3, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[3], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_4, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[4], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_5, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[5], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7], explosion100Palette);
+	vdp_bitmapSendData16(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8], explosion100Palette);
 }
 
 // Setup audio channels
@@ -578,28 +648,29 @@ void SetupSprites(UINT8 level)
 		objects[i].counter = 0;
 		vdp_spriteSelect(i);
 		vdp_spriteClearFramesSelected();
-		vdp_spriteAddFrameSelected(BID_EGGS0);		// Frame 0 to 6 = eggs
+		vdp_spriteAddFrameSelected(BID_EGGS0);		// Frame 0 to 7 = eggs
 		vdp_spriteAddFrameSelected(BID_EGGS1);
 		vdp_spriteAddFrameSelected(BID_EGGS2);
 		vdp_spriteAddFrameSelected(BID_EGGS3);
 		vdp_spriteAddFrameSelected(BID_EGGS4);
 		vdp_spriteAddFrameSelected(BID_EGGS5);
 		vdp_spriteAddFrameSelected(BID_EGGS6);
- 		vdp_spriteAddFrameSelected(BID_SBIRD0);		// frame 7 to 13 = small bird
+		vdp_spriteAddFrameSelected(BID_EGGS7);
+ 		vdp_spriteAddFrameSelected(BID_SBIRD0);		// frame 8 to 14 = small bird
 		vdp_spriteAddFrameSelected(BID_SBIRD1);
 		vdp_spriteAddFrameSelected(BID_SBIRD2);
 		vdp_spriteAddFrameSelected(BID_SBIRD3);
 		vdp_spriteAddFrameSelected(BID_SBIRD4);
 		vdp_spriteAddFrameSelected(BID_SBIRD5);
 		vdp_spriteAddFrameSelected(BID_SBIRD6);
-		vdp_spriteAddFrameSelected(BID_BBIRD0);		// frame 14 to 21 = big bird
+		vdp_spriteAddFrameSelected(BID_BBIRD0);		// frame 15 to 22 = big bird
 		vdp_spriteAddFrameSelected(BID_BBIRD1);
 		vdp_spriteAddFrameSelected(BID_BBIRD2);
 		vdp_spriteAddFrameSelected(BID_BBIRD3);
 		vdp_spriteAddFrameSelected(BID_BBIRD4);
 		vdp_spriteAddFrameSelected(BID_BBIRD5);
 		vdp_spriteAddFrameSelected(BID_BBIRD6);
-		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 22 to 30 = small explosion
+		vdp_spriteAddFrameSelected(BID_EXPLOSION0);	// frame 23 to 31 = small explosion
 		vdp_spriteAddFrameSelected(BID_EXPLOSION1);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION2);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION3);
@@ -608,7 +679,7 @@ void SetupSprites(UINT8 level)
 		vdp_spriteAddFrameSelected(BID_EXPLOSION6);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION7);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION7);	// doubled to make 9 frames
-		vdp_spriteAddFrameSelected(BID_EXPLOSION100_0);	// frame 31 to 39 = explosion100 (sideways explosion)
+		vdp_spriteAddFrameSelected(BID_EXPLOSION100_0);	// frame 32 to 40 = explosion100 (sideways explosion)
 		vdp_spriteAddFrameSelected(BID_EXPLOSION100_1);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION100_2);
 		vdp_spriteAddFrameSelected(BID_EXPLOSION100_3);
@@ -743,7 +814,7 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 	switch (pObject->state)
 		{
 		case ST_EGG :
-			if (224 == pObject->counter)
+			if (256 == pObject->counter)
 				{
 				// First 2 levels of every round, egg hatches to small bird
 				if (level & 0x2)
@@ -752,13 +823,13 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 					pObject->type = BIRD;
 				pObject->state = ST_MOVERANDOM;
 				pObject->dirn = GetRandomDirection();
-				pObject->frame = 7;
+				pObject->frame = SBIRD_STARTFRAME;
 				pObject->counter = rand255();		//0; 
 				}
 			else
 				{
 				// Update egg animation frame
-				pObject->frame = (UINT8)pObject->counter >> 5;
+				pObject->frame = EGG_STARTFRAME + ((UINT8)pObject->counter >> 5);
 				}
 			break;
 //		case ST_MOVERIGHT :
@@ -822,9 +893,9 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 				}
 
 			if (BIGBIRD == pObject->type)
-				pObject->frame = 14 + ((UINT8)(pObject->counter / 8) % 7);
+				pObject->frame = BBIRD_STARTFRAME + ((UINT8)(pObject->counter / 8) % 7);
 			else
-				pObject->frame = 7 + ((UINT8)(pObject->counter / 8) % 7);
+				pObject->frame = SBIRD_STARTFRAME + ((UINT8)(pObject->counter / 8) % 7);
 
 			// Time to choose a new direction?
 			if ((pObject->counter % 64) == 0)
@@ -882,9 +953,9 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 			break;
 		case ST_DYING :
 			if (BIGBIRD == pObject->type)
-				pObject->frame = 31 + ((UINT8)pObject->counter >> 2);			// Explosion100 frames
+				pObject->frame = EXPLOSION100_STARTFRAME + ((UINT8)pObject->counter >> 2);			// Explosion100 frames
 			else
-				pObject->frame = 22 + ((UINT8)pObject->counter >> 2);			// Explosion frames
+				pObject->frame = EXPLOSION_STARTFRAME + ((UINT8)pObject->counter >> 2);			// Explosion frames
 
 			if (31 == pObject->counter)
 				{
@@ -960,7 +1031,7 @@ void UpdatePlayerBullet()
 					audio_playNote(SFX_ENEMYEXPLODE, 100, 75, 10);
 					objects[n].state = ST_DYING;			// Start dying animation
 					objects[n].counter = 0;
-					objects[n].frame = (BIGBIRD == objects[n].type) ? 30 : 22;
+					objects[n].frame = (BIGBIRD == objects[n].type) ? EXPLOSION100_STARTFRAME : EXPLOSION_STARTFRAME;
 					//vdp_spriteSetFrame(j, 7);				// Set to first frame of explosion animation
 					// Also kill the bullet
 					objects[PLAYERBULLET].state = ST_INACTIVE;

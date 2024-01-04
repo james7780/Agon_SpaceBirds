@@ -1,4 +1,9 @@
 #include <defines.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+
 #include "vdp.h"
 #include "mos-interface.h"
 
@@ -222,6 +227,54 @@ void vdp_bitmapSendData(UINT8 id, UINT16 width, UINT16 height, UINT32 *data)
 	vdp_bitmapSendDataSelected(width, height, data);
 	return;	
 }
+
+// Send 16-colour paletted data to the VDP
+// Palette is RGB8
+void vdp_bitmapSendData16(UINT8 id, UINT16 width, UINT16 height, UINT8 *data, UINT32 *palette)
+{
+	UINT16 n, count;
+	UINT32 ARGB;
+	//UINT24 colour;
+	UINT8 palIndex;
+
+	vdp_bitmapSelect(id);
+
+	putch(23); // vdu_sys
+	putch(27); // sprite command
+	putch(1);  // send data to selected bitmap
+	
+	write16bit(width);
+	write16bit(height);
+	
+	count = (width * height / 2);				// 1 byte = 2 pixels
+	for(n = 0; n < count; n++)
+		{
+		palIndex = data[n] >> 4;
+		ARGB = palette[palIndex];
+		write32bit(ARGB);
+		palIndex = data[n] & 0x0F;
+		ARGB = palette[palIndex];
+		write32bit(ARGB);
+		//delayms(1);
+		}
+
+	//for(n = 0; n < count; n++)
+	//	{
+	//	palIndex = data[n] >> 4;
+	//	ARGB = palette[palIndex];
+	//	printf("%X ", ARGB);
+	//	//printf("%2X ", palIndex);
+	//	palIndex = data[n] & 0x0F;
+	//	ARGB = palette[palIndex];
+	//	printf("%X \r\n", ARGB);
+	//	//printf("%d  ", palIndex);
+	//	//delayms(1);
+	//	}
+
+	return;		
+}
+
+
 
 void vdp_bitmapDrawSelected(UINT16 x, UINT16 y)
 {

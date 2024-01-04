@@ -119,6 +119,7 @@ void vdp_plotFilledRectangle(unsigned int x, unsigned int y);
 void vdp_bitmapSelect(UINT8 id);
 void vdp_bitmapSendDataSelected(UINT16 width, UINT16 height, UINT32 *data);
 void vdp_bitmapSendData(UINT8 id, UINT16 width, UINT16 height, UINT32 *data);
+void vdp_bitmapSendData16(UINT8 id, UINT16 width, UINT16 height, UINT8 *data, UINT32 *palette);
 void vdp_bitmapDrawSelected(UINT16 x, UINT16 y);
 void vdp_bitmapDraw(UINT8 id, UINT16 x, UINT16 y);
 void vdp_bitmapCreateSolidColorSelected(UINT16 width, UINT16 height, UINT32 abgr);
