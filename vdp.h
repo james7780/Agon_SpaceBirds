@@ -7,10 +7,11 @@
  * Modinfo:
  * 20/10/2022:		Initial version: text/graphics functions
  * 22/10/2022:		Bitmap/Sprite functions added
- * 23/03/2023:      vdp_getMode function added, VDP 23,0,n commands changed to MOS 1.03
- * 26/03/2023:      pagedMode support, setPaletteColor support
- * xx/10/2023:      Added VDP 1.04 video mode defines
- * 20/10/2023:      JH - Added vdp_setLogicalCoords() and buffer swap
+ * 23/03/2023:    vdp_getMode function added, VDP 23,0,n commands changed to MOS 1.03
+ * 26/03/2023:    pagedMode support, setPaletteColor support
+ * xx/10/2023:    Added VDP 1.04 video mode defines
+ * 20/10/2023:    JH - Added vdp_setLogicalCoords() and buffer swap
+ * 02/01/2023:    JH - Added vdp_bitmapSendData16() to upload 16-colour paletted images
  */
 
 #include <defines.h>
@@ -87,18 +88,23 @@ void vdp_scroll(unsigned char extent, unsigned char direction, unsigned char spe
 // Switch buffers (double-buffered mode)
 void vdp_switchBuffers();
 // Text VDP functions
-void  vdp_cls();
-void  vdp_cursorHome();
-void  vdp_cursorUp();
-void  vdp_cursorGoto(unsigned char x, unsigned char y);
+void vdp_cls();
+void vdp_cursorHome();
+void vdp_cursorUp();
+void vdp_cursorGoto(unsigned char x, unsigned char y);
 UINT8 vdp_cursorGetXpos(void);
 UINT8 vdp_cursorGetYpos(void);
-void  vdp_cursorDisable(void);
-void  vdp_cursorEnable(void);
-char  vdp_asciiCodeAt(unsigned char x, unsigned char y);
-void  vdp_setpagedMode(bool mode);
-void  vdp_fgcolour(unsigned char colorindex);
-void  vdp_bgcolour(unsigned char colorindex);
+void vdp_cursorDisable(void);
+void vdp_cursorEnable(void);
+char vdp_asciiCodeAt(unsigned char x, unsigned char y);
+void vdp_setpagedMode(bool mode);
+void vdp_fgcolour(unsigned char colorindex);
+void vdp_bgcolour(unsigned char colorindex);
+// Redefine ASCII character number c with 8 bytes at data pointer
+// VDU 23, c, n1, n2, n3, n4, n5, n6, n7, n8: Redefine a display character
+// Parameters:
+// - c: The character to redefine
+void vdp_redefineChar(unsigned char c, UINT8 *data);
 
 // Graphic VDP functions
 void vdp_setLogicalCoords(unsigned char n);	// JH

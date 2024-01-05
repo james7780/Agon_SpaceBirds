@@ -91,6 +91,20 @@ void vdp_bgcolour(unsigned char colorindex) {
 	putch(colorindex | 0x80);	
 }
 
+// Redefine ASCII character number c with 8 bytes at data pointer
+// @param c				The ASCII character to redefine
+// @param data		Pointer to 8 bytes of data to use to redefine the character
+void vdp_redefineChar(unsigned char c, UINT8 *data)
+{
+	// VDU 23, c, n1, n2, n3, n4, n5, n6, n7, n8: Redefine a display character
+	UINT8 i;
+	putch(23);
+	putch(c);
+	for (i = 0; i < 8; i++)
+		putch(data[i]);
+}
+
+
 //
 // Graphics functions
 //

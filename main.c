@@ -13,10 +13,13 @@
 // - Query sprite collisions (from fabGL)
 
 // TODO
-// - Paletted bitmap upload (convert 4-bit image data to 24-bit when uploading)
-// - Player explode particle effects
+// - [DONE] Custom font
+// - [DONE] Paletted bitmap upload (convert 4-bit image data to 24-bit when uploading)
+// - [DONE] Player explode particle effects
 // - Small bird to big bird transition
 // - Big bird split transition
+// - Boss battle
+// - Better sound (using updated 1.04 engine) - Envelopes, different waveforms
 
 // Ideas:
 // 1. Big bird splits into 2 when shot
@@ -36,12 +39,6 @@
 //    - Enemy bullet speed increases
 //    - Enemies start shooting bullets at an angle
 
-// TODO:
-// - Particle explosion when player hit
-// - Boss battle
-// - Custom font
-// - Better sound (using updated 1.04 engine) - Envelopes, different waveforms
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -50,6 +47,8 @@
 #include "vdp.h"
 #include "vdp_audio.h"
 
+#include "fantasia_font.h"			// Custom font
+
 #include "sprites/ufos.h"				// for bullets
 #include "sprites/playerShip16.h"					// Paletted player ship data (1/8th size)
 #include "sprites/explosions16.h"					// 4-bit paletted version
@@ -57,18 +56,19 @@
 #include "sprites/eggs16.h"								// 4-bit paletted
 #include "sprites/bird_16x12.h"						// now 4-bit paletted
 #include "sprites/bird_32x24_shaded.h"		// now 4-bit paletted
+#include "sprites/fragments.h"						// 8x8, 4-bit palette
 #include "sprites/title16_16x16.h"				// 4-bit paletted version
 
-#define SCREEN_WIDTH		320
+#define SCREEN_WIDTH	320
 #define SCREEN_HEIGHT	240
 
 #define MAX_SPRITES		32
 
 #define FIRSTENEMYBULLETID	2				// index of the first enemy bullet in the object/sprite array
-#define LASTENEMYBULLETID	7
-#define FIRSTENEMYID		8				// index of the first enemy in the object array
-#define MAX_ENEMIES		12
-#define LASTENEMYID		(FIRSTENEMYID + MAX_ENEMIES - 1)	// index of the last enemy in the object array
+#define LASTENEMYBULLETID		11
+#define FIRSTENEMYID				12			// index of the first enemy in the object array
+#define MAX_ENEMIES					12
+#define LASTENEMYID					(FIRSTENEMYID + MAX_ENEMIES - 1)	// index of the last enemy in the object array
 
 #define EGG_STARTFRAME		0
 #define SBIRD_STARTFRAME	8
@@ -78,7 +78,7 @@
 
 #define MAX_BOMBDROPCHANCE	100				// Chance of any enemy dropping a bullet every frame (n/65536)
 
-#define FREE_LIFE_INTERVAL 1000
+#define FREE_LIFE_INTERVAL 5000
 
 // Bitmaps ids
 enum {
@@ -144,7 +144,12 @@ enum {
 	BID_EXPLOSION100_5,
 	BID_EXPLOSION100_6,
 	BID_EXPLOSION100_7,
-	BID_EXPLOSION100_8
+	BID_EXPLOSION100_8,
+
+	BID_FRAGMENT0,
+	BID_FRAGMENT1,
+	BID_FRAGMENT2,
+	BID_FRAGMENT3
 };
 
 // Object types (type index)
@@ -154,7 +159,8 @@ enum {
 	ENEMYBULLET,
 	EGG,
 	BIRD,
-	BIGBIRD
+	BIGBIRD,
+	FRAGMENT				// For "particle effects"
 };
 
 // Object states
@@ -167,6 +173,7 @@ enum {
 	ST_MOVERIGHT,
 	ST_MOVERANDOM,
 	ST_SPLITTING,
+	ST_FRAGMENT,
 	ST_DYING 
 };
 
@@ -286,7 +293,15 @@ UINT8 rand255()
 	return (rand() & 0xFF);
 }
 
-// Upload 
+// Upload custom font to the VDP
+void UploadCustomFont()
+{
+	// Custom "Fantasia" font starts at char 32
+	UINT8 i;
+	for (i = 0; i < 64; i++)
+		vdp_redefineChar(i + 32, fantasia_font + (i * 8));
+}
+
 // Upload bitmap and sprite data to the VDP
 void UploadBitmaps()
 {
@@ -411,6 +426,12 @@ void UploadBitmaps()
 	vdp_bitmapSendData16(BID_EXPLOSION100_6, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[6], explosion100Palette);
 	vdp_bitmapSendData16(BID_EXPLOSION100_7, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[7], explosion100Palette);
 	vdp_bitmapSendData16(BID_EXPLOSION100_8, EXPLOSION100_WIDTH, EXPLOSION100_HEIGHT, explosion100Data[8], explosion100Palette);
+
+	// Fragment 8x8 sprites
+	vdp_bitmapSendData16(BID_FRAGMENT0, FRAGMENT_WIDTH, FRAGMENT_HEIGHT, fragmentData[0], fragmentDataPalette);
+	vdp_bitmapSendData16(BID_FRAGMENT1, FRAGMENT_WIDTH, FRAGMENT_HEIGHT, fragmentData[1], fragmentDataPalette);
+	vdp_bitmapSendData16(BID_FRAGMENT2, FRAGMENT_WIDTH, FRAGMENT_HEIGHT, fragmentData[2], fragmentDataPalette);
+	vdp_bitmapSendData16(BID_FRAGMENT3, FRAGMENT_WIDTH, FRAGMENT_HEIGHT, fragmentData[3], fragmentDataPalette);
 }
 
 // Setup audio channels
@@ -519,13 +540,13 @@ void DoTitle()
 	vdp_spriteRefresh();
 
 	vdp_cursorGoto(10, 20);
-	printf("By Jum Hig 2023");
+	printf("BY JUM HIG 2023");
 	vdp_cursorGoto(8, 22);
-	printf("Press SPACE to start");
+	printf("PRESS SPACE TO START");
 
 	// Wait for keypress
 	startCount = 255;
-	while (startCount > 0)
+	while (startCount > 2)
 		{
 		waitvblank();
 		r += 0.03;
@@ -545,12 +566,12 @@ void DoTitle()
 		// Scroll screen up after we have pressed start
 		if (startCount < 255)
 			{
-			vdp_scroll(0, 3, 1);
+			vdp_scroll(0, 3, 2);
 			vdp_plotColour(rand255() & 0x0F);
 			vdp_plotPoint(rand() % SCREEN_WIDTH, SCREEN_HEIGHT - 1);
 			for (i = 0; i < TITLE_FRAME_COUNT; i++)
-				objects[i].y--;
-			startCount--;
+				objects[i].y -= 2;
+			startCount -= 2;
 			}
 		}
 
@@ -616,6 +637,10 @@ void SetupSprites(UINT8 level)
 		vdp_spriteSelect(i);
 		vdp_spriteClearFramesSelected();
 		vdp_spriteAddFrameSelected(BID_ENEMYBULLET);
+		vdp_spriteAddFrameSelected(BID_FRAGMENT0);					// "fragment"
+		vdp_spriteAddFrameSelected(BID_FRAGMENT1);
+		vdp_spriteAddFrameSelected(BID_FRAGMENT2);
+		vdp_spriteAddFrameSelected(BID_FRAGMENT3);
 		vdp_spriteHideSelected();
 		vdp_spriteMoveToSelected(SCREEN_WIDTH / 2, SCREEN_HEIGHT);		// Offscreen
 		}
@@ -712,6 +737,31 @@ UINT8 GetRandomDirection()
 	return (UD | LR);
 }
 
+// Kill the player
+void KillPLayer()
+{
+	UINT8 i;
+
+	// Kill the player
+	audio_playNote(SFX_PLAYEREXPLODE, 120, 70, 10);
+	objects[PLAYER].state = ST_DYING;			// Start dying animation
+	objects[PLAYER].counter = 0;
+
+	// Spawn some fragments
+	for (i = FIRSTENEMYBULLETID; i <= LASTENEMYBULLETID; i++)
+		{
+		objects[i].type = FRAGMENT;
+		objects[i].state = ST_FRAGMENT;
+		objects[i].x = objects[PLAYER].x;
+		objects[i].y = objects[PLAYER].y;
+		objects[i].frame = 1;									// Bullet frames 1 to 4 are fragment bitmaps
+		objects[i].counter = 0;
+		objects[i].dirn = rand() & 0xFF;			// random direction
+		vdp_spriteMoveTo(i, objects[i].x, objects[i].y);
+		vdp_spriteShow(i);
+		}
+}
+
 // Drop a new enemy bullet
 void DropEnemyBullet(OBJECT *pParentObject)
 {
@@ -733,7 +783,9 @@ void DropEnemyBullet(OBJECT *pParentObject)
 			{
 			// Set up new enemy bullet 
 			audio_playNote(SFX_ENEMYFIRE, 75, 1024, 10);
+			pBulletObject->type = ENEMYBULLET;
 			pBulletObject->state = ST_ACTIVE;
+			pBulletObject->frame = 0;
 			pBulletObject->x = (BIGBIRD == pParentObject->type) ? pParentObject->x + 8 : pParentObject->x;
 			pBulletObject->y = pParentObject->y + 16;
 			vdp_spriteMoveTo(n, pBulletObject->x, pBulletObject->y);
@@ -764,9 +816,7 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 			if (abs(pObject->x - objects[PLAYER].x) < 9)
 				{
 				// Kill the player
-				audio_playNote(SFX_ENEMYEXPLODE, 120, 70, 10);
-				objects[PLAYER].state = ST_DYING;			// Start dying animation
-				objects[PLAYER].counter = 0;
+				KillPLayer();
 
 				pObject->y = SCREEN_HEIGHT;			// kill this bullet below
 				}
@@ -778,6 +828,28 @@ void UpdateEnemyBullet(UINT8 n, UINT8 level)
 			pObject->y += 2;
 
 		if (pObject->y >= SCREEN_HEIGHT)
+			{
+			pObject->counter = 0;
+			pObject->frame = 0;
+			pObject->state = ST_INACTIVE;
+			vdp_spriteHide(n);
+			}
+		}
+	else if (ST_FRAGMENT == pObject->state)					// A particle effects fragment
+		{
+		pObject->counter++;
+		if (pObject->counter < 126)
+			{
+			if (pObject->counter & 1)			// update fragment slower
+				{
+				if (0 == pObject->dirn)
+					pObject->dirn = rand() & 0xFF;		// Fix random case where fragment does not move
+				pObject->x += (pObject->dirn & 0x07) - 4;
+				pObject->y -= ((pObject->dirn & 0x70) >> 5);
+				pObject->frame = 1 + (pObject->counter >> 5);
+				}
+			}
+		else
 			{
 			pObject->counter = 0;
 			pObject->frame = 0;
@@ -974,16 +1046,16 @@ void UpdateEnemy(UINT8 n, UINT8 level)
 		vdp_spriteSetFrame(n, pObject->frame);
 
 		// Check for collision with player
-		d = (BIGBIRD == pObject->type) ? 24 : 12;				// coll "diameter" of enemy
-		i = (BIGBIRD == pObject->type) ? 8 : 0;				// enemy top-left offset relative to player sprite
-		if (pObject->y > (objects[PLAYER].y - d) && pObject->y < (objects[PLAYER].y + 14))
+		if (objects[PLAYER].state != ST_DYING)
 			{
-			if (abs(pObject->x + i - objects[PLAYER].x) <= d)
+			d = (BIGBIRD == pObject->type) ? 24 : 12;				// coll "diameter" of enemy
+			i = (BIGBIRD == pObject->type) ? 8 : 0;				// enemy top-left offset relative to player sprite
+			if (pObject->y > (objects[PLAYER].y - d) && pObject->y < (objects[PLAYER].y + 14))
 				{
-				// Kill the player
-				audio_playNote(SFX_PLAYEREXPLODE, 120, 70, 10);
-				objects[PLAYER].state = ST_DYING;			// Start dying animation
-				objects[PLAYER].counter = 0;
+				if (abs(pObject->x + i - objects[PLAYER].x) <= d)
+					{
+					KillPLayer();
+					}
 				}
 			}
 		}
@@ -1092,10 +1164,10 @@ void LevelIntermission()
 		vdp_spriteHide(n);
 	vdp_spriteRefresh();
 
-	for (n = 0; n < SCREEN_HEIGHT; n++)
+	for (n = 0; n < SCREEN_HEIGHT; n += 2)
 		{
 		waitvblank();
-		vdp_scroll(0, 2, 1);
+		vdp_scroll(0, 2, 2);
 		vdp_plotColour(rand255() & 0x0F);
 		vdp_plotPoint(rand() % SCREEN_WIDTH, 1);			// plot coordinates!
 		}
@@ -1192,9 +1264,11 @@ UINT8 PlayLevel(UINT8 level)
 		else
 			{
 			// Player dying or dead
-			vdp_spriteSetFrame(PLAYER, objects[PLAYER].counter / 8);
+			if (objects[PLAYER].counter < 32)
+				vdp_spriteSetFrame(PLAYER, objects[PLAYER].counter / 8);
+
 			objects[PLAYER].counter++;
-			if (32 == objects[PLAYER].counter)
+			if (128 == objects[PLAYER].counter)			// Allow more time for fragments animation
 				endState = 1;
 			}
 
@@ -1211,6 +1285,8 @@ UINT8 PlayLevel(UINT8 level)
 	return endState;
 }
 
+// TEST
+UINT8 charData[8] =  { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; 
 
 /// @param[in] argc			Argument count
 /// @param[in] argv			Pointer to the argument string - zero terminated, parameters separated by spaces
@@ -1248,6 +1324,10 @@ int main(int argc, char * argv[])
 	// Bitmaps 0 to 8 are for player + player bullet
 	printf("Uploading bitmaps...\n\r");
 	UploadBitmaps();
+
+	printf("Uploading font...\n\r");
+	UploadCustomFont();
+
 
 	DoTitle();
 	
